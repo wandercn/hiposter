@@ -1,12 +1,14 @@
 use crate::model::{Header, HttpMethod, HttpRequest, HttpResponse};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use reqwest::{Client, Method};
 use std::time::Duration;
 
 pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
     let client = Client::builder()
         .timeout(Duration::from_secs(30))
-        .build()?;
+        .danger_accept_invalid_certs(true) // More lenient for debugging
+        .build()
+        .context("Failed to build HTTP client")?;
 
     let method = match request.method {
         HttpMethod::GET => Method::GET,
@@ -24,7 +26,11 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
     builder = builder.header("User-Agent", "hiposter-gpui/0.1.0");
     builder = builder.header("Accept", "*/*");
     builder = builder.header("Connection", "keep-alive");
-    builder = builder.header("Content-Type", &request.content_type);
+
+    // Add content-type if body is present
+    if !request.body.is_empty() {
+        builder = builder.header("Content-Type", &request.content_type);
+    }
 
     // Add custom headers
     for header in &request.headers {
@@ -39,7 +45,7 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
     }
 
     let start = std::time::Instant::now();
-    let response = builder.send().await?;
+    let response = builder.send().await.context("Failed to send request")?;
     let _duration = start.elapsed();
 
     let status = response.status();
@@ -54,8 +60,10 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
         });
     }
 
-    let body = response.text().await?;
-    let size = body.len();
+    // Use bytes() and convert to lossy string to avoid UTF-8 errors
+    let bytes = response.bytes().await.context("Failed to read response body")?;
+    let size = bytes.len();
+    let body = String::from_utf8_lossy(&bytes).to_string();
 
     Ok(HttpResponse {
         status_code,
@@ -79,7 +87,7 @@ mod tests {
             ..Default::default()
         };
         let result = execute_request(&request).await;
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "Request failed: {:?}", result.err());
         let response = result.unwrap();
         assert_eq!(response.status_code, 200);
         assert!(response.body.contains("url"));

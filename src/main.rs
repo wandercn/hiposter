@@ -335,6 +335,12 @@ impl Render for Hiposter {
 }
 
 fn main() {
+    let _runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to build tokio runtime");
+    let _guard = _runtime.enter();
+
     let app = gpui_platform::application().with_assets(Assets);
 
     app.run(move |cx| {
