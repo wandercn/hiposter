@@ -12,9 +12,15 @@ enum RequestTab {
     Body,
 }
 
+struct HeaderRow {
+    key: Entity<TextInput>,
+    value: Entity<TextInput>,
+}
+
 struct Hiposter {
     url_input: Entity<TextInput>,
     body_input: Entity<TextInput>,
+    headers: Vec<HeaderRow>,
     request: model::HttpRequest,
     response: Option<model::HttpResponse>,
     loading: bool,
@@ -36,11 +42,24 @@ impl Hiposter {
         Self {
             url_input,
             body_input,
+            headers: Vec::new(),
             request: model::HttpRequest::default(),
             response: None,
             loading: false,
             active_tab: RequestTab::Headers,
         }
+    }
+
+    fn add_header(&mut self, cx: &mut Context<Self>) {
+        let key = cx.new(|cx| TextInput::new(cx, "Key"));
+        let value = cx.new(|cx| TextInput::new(cx, "Value"));
+        self.headers.push(HeaderRow { key, value });
+        cx.notify();
+    }
+
+    fn remove_header(&mut self, index: usize, cx: &mut Context<Self>) {
+        self.headers.remove(index);
+        cx.notify();
     }
 
     fn send_request(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
@@ -54,6 +73,16 @@ impl Hiposter {
         }
         self.request.url = url;
         self.request.body = self.body_input.read(cx).content();
+        
+        // Collect headers
+        self.request.headers.clear();
+        for row in &self.headers {
+            let key = row.key.read(cx).content();
+            let value = row.value.read(cx).content();
+            if !key.trim().is_empty() {
+                self.request.headers.push(model::Header { key, value });
+            }
+        }
 
         self.loading = true;
         self.response = None;
@@ -197,7 +226,54 @@ impl Render for Hiposter {
                                     .p_4()
                                     .child(
                                         match self.active_tab {
-                                            RequestTab::Headers => div().child("Headers list (TBD)"),
+                                            RequestTab::Headers => {
+                                                div()
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap_2()
+                                                    .child(
+                                                        div()
+                                                            .flex()
+                                                            .justify_between()
+                                                            .child("Headers")
+                                                            .child(
+                                                                div()
+                                                                    .px_2()
+                                                                    .bg(rgb(0x81a1c1))
+                                                                    .text_color(rgb(0x2e3440))
+                                                                    .rounded_md()
+                                                                    .cursor_pointer()
+                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                                        this.add_header(cx);
+                                                                    }))
+                                                                    .child("+ Add")
+                                                            )
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .flex()
+                                                            .flex_col()
+                                                            .gap_2()
+                                                            .children(self.headers.iter().enumerate().map(|(i, row)| {
+                                                                div()
+                                                                    .flex()
+                                                                    .gap_2()
+                                                                    .child(row.key.clone())
+                                                                    .child(row.value.clone())
+                                                                    .child(
+                                                                        div()
+                                                                            .px_2()
+                                                                            .bg(rgb(0xbf616a))
+                                                                            .rounded_md()
+                                                                            .cursor_pointer()
+                                                                            .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                                                this.remove_header(i, cx);
+                                                                            }))
+                                                                            .child("X")
+                                                                    )
+                                                            }))
+                                                    )
+                                            }
                                             RequestTab::Body => div().size_full().child(self.body_input.clone()),
                                         }
                                     )
