@@ -1,10 +1,15 @@
 mod model;
 mod http;
-mod components;
 
 use gpui::*;
-use gpui_platform::application;
-use crate::components::text_input::TextInput;
+use gpui_component::{
+    button::*,
+    input::{Input, InputState},
+    tab::{Tab, TabBar},
+    label::Label,
+    *,
+};
+use gpui_component_assets::Assets;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum RequestTab {
@@ -13,13 +18,13 @@ enum RequestTab {
 }
 
 struct HeaderRow {
-    key: Entity<TextInput>,
-    value: Entity<TextInput>,
+    key: Entity<InputState>,
+    value: Entity<InputState>,
 }
 
 struct Hiposter {
-    url_input: Entity<TextInput>,
-    body_input: Entity<TextInput>,
+    url_input: Entity<InputState>,
+    body_input: Entity<InputState>,
     headers: Vec<HeaderRow>,
     request: model::HttpRequest,
     response: Option<model::HttpResponse>,
@@ -28,15 +33,15 @@ struct Hiposter {
 }
 
 impl Hiposter {
-    fn new(cx: &mut Context<Self>) -> Self {
+    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let url_input = cx.new(|cx| {
-            let mut input = TextInput::new(cx, "https://httpbin.org/get");
-            input.set_content("https://httpbin.org/get".to_string(), cx);
-            input
+            InputState::new(window, cx)
+                .placeholder("https://httpbin.org/get")
+                .default_value("https://httpbin.org/get")
         });
 
         let body_input = cx.new(|cx| {
-            TextInput::new(cx, "Request body...")
+            InputState::new(window, cx).placeholder("Request body...")
         });
 
         Self {
@@ -50,16 +55,15 @@ impl Hiposter {
         }
     }
 
-    fn add_header(&mut self, cx: &mut Context<Self>) {
-        let key = cx.new(|cx| TextInput::new(cx, "Header Key"));
-        let value = cx.new(|cx| TextInput::new(cx, "Header Value"));
+    fn add_header(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let key = cx.new(|cx| InputState::new(window, cx).placeholder("Header Key"));
+        let value = cx.new(|cx| InputState::new(window, cx).placeholder("Header Value"));
         self.headers.push(HeaderRow { key, value });
         cx.notify();
     }
 
-    fn remove_header(&mut self, index: usize, cx: &mut Context<Self>) {
+    fn remove_header(&mut self, index: usize, _cx: &mut Context<Self>) {
         self.headers.remove(index);
-        cx.notify();
     }
 
     fn send_request(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
@@ -67,20 +71,23 @@ impl Hiposter {
             return;
         }
 
-        let url = self.url_input.read(cx).content();
+        let url = self.url_input.read(cx).value();
         if url.trim().is_empty() {
             return;
         }
-        self.request.url = url;
-        self.request.body = self.body_input.read(cx).content();
+        self.request.url = url.to_string();
+        self.request.body = self.body_input.read(cx).value().to_string();
         
         // Collect headers
         self.request.headers.clear();
         for row in &self.headers {
-            let key = row.key.read(cx).content();
-            let value = row.value.read(cx).content();
+            let key = row.key.read(cx).value();
+            let value = row.value.read(cx).value();
             if !key.trim().is_empty() {
-                self.request.headers.push(model::Header { key, value });
+                self.request.headers.push(model::Header { 
+                    key: key.to_string(), 
+                    value: value.to_string() 
+                });
             }
         }
 
@@ -117,7 +124,7 @@ impl Hiposter {
         .detach();
     }
 
-    fn toggle_method(&mut self, cx: &mut Context<Self>) {
+    fn toggle_method(&mut self, _cx: &mut Context<Self>) {
         self.request.method = match self.request.method {
             model::HttpMethod::GET => model::HttpMethod::POST,
             model::HttpMethod::POST => model::HttpMethod::PUT,
@@ -125,226 +132,152 @@ impl Hiposter {
             model::HttpMethod::DELETE => model::HttpMethod::GET,
             _ => model::HttpMethod::GET,
         };
-        cx.notify();
     }
 
-    fn select_tab(&mut self, tab: RequestTab, cx: &mut Context<Self>) {
+    fn select_tab(&mut self, tab: RequestTab, _cx: &mut Context<Self>) {
         self.active_tab = tab;
-        cx.notify();
     }
 }
 
 impl Render for Hiposter {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .flex()
-            .flex_col()
-            .bg(rgb(0x2e3440))
+        v_flex()
             .size_full()
-            .text_color(rgb(0xffffff)) // 强化全局文字为纯白
+            .bg(cx.theme().background)
             .child(
-                // Header / URL Bar area
-                div()
-                    .flex()
+                // Header / URL Bar
+                h_flex()
                     .p_4()
                     .border_b_1()
-                    .border_color(rgb(0x4c566a))
-                    .gap_4()
+                    .border_color(cx.theme().border)
+                    .gap_3()
                     .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .px_3()
-                            .py_1()
-                            .bg(rgb(0x3b4252))
-                            .rounded_md()
-                            .cursor_pointer()
-                            .text_color(rgb(0x88c0d0)) // 冰蓝色高亮方法
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                        Button::new("method")
+                            .label(format!("{:?}", self.request.method))
+                            .on_click(cx.listener(|this, _, _, cx| {
                                 this.toggle_method(cx);
                             }))
-                            .child(format!("{:?}", self.request.method))
                     )
+                    .child(Input::new(&self.url_input).flex_1())
                     .child(
-                        div()
-                            .flex_1()
-                            .child(self.url_input.clone())
-                    )
-                    .child(
-                        div()
-                            .px_6()
-                            .py_1()
-                            .bg(if self.loading { rgb(0x4c566a) } else { rgb(0x81a1c1) })
-                            .text_color(rgb(0x2e3440))
-                            .rounded_md()
-                            .cursor_pointer()
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _event, window, cx| {
+                        Button::new("send")
+                            .primary()
+                            .label(if self.loading { "Sending..." } else { "Send" })
+                            .disabled(self.loading)
+                            .on_click(cx.listener(|this, _, window, cx| {
                                 this.send_request(window, cx);
                             }))
-                            .child(if self.loading { "Sending..." } else { "Send" })
                     )
             )
             .child(
-                // Main Content area
-                div()
+                // Main Content
+                h_flex()
                     .flex_1()
-                    .flex()
                     .child(
-                        // Request Panel (Left)
-                        div()
+                        // Request Panel
+                        v_flex()
                             .flex_1()
                             .border_r_1()
-                            .border_color(rgb(0x4c566a))
-                            .flex()
-                            .flex_col()
+                            .border_color(cx.theme().border)
                             .child(
-                                // Tabs
-                                div()
-                                    .flex()
-                                    .border_b_1()
-                                    .border_color(rgb(0x4c566a))
+                                TabBar::new("tabs")
                                     .child(
-                                        div()
-                                            .px_4()
-                                            .py_2()
-                                            .cursor_pointer()
-                                            .bg(if self.active_tab == RequestTab::Headers { rgb(0x3b4252) } else { rgb(0x2e3440) })
-                                            .border_b_2()
-                                            .border_color(if self.active_tab == RequestTab::Headers { rgb(0x81a1c1) } else { rgb(0x2e3440) })
-                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                        Tab::new()
+                                            .label("Headers")
+                                            .selected(self.active_tab == RequestTab::Headers)
+                                            .on_click(cx.listener(|this, _, _, cx| {
                                                 this.select_tab(RequestTab::Headers, cx);
-                                            }))
-                                            .child("Headers")
+                                            })),
                                     )
                                     .child(
-                                        div()
-                                            .px_4()
-                                            .py_2()
-                                            .cursor_pointer()
-                                            .bg(if self.active_tab == RequestTab::Body { rgb(0x3b4252) } else { rgb(0x2e3440) })
-                                            .border_b_2()
-                                            .border_color(if self.active_tab == RequestTab::Body { rgb(0x81a1c1) } else { rgb(0x2e3440) })
-                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                        Tab::new()
+                                            .label("Body")
+                                            .selected(self.active_tab == RequestTab::Body)
+                                            .on_click(cx.listener(|this, _, _, cx| {
                                                 this.select_tab(RequestTab::Body, cx);
-                                            }))
-                                            .child("Body")
+                                            })),
                                     )
                             )
                             .child(
-                                div()
-                                    .id("request-panel-content")
+                                v_flex()
                                     .flex_1()
                                     .p_4()
-                                    .overflow_y_scroll()
                                     .child(
                                         match self.active_tab {
                                             RequestTab::Headers => {
-                                                div()
-                                                    .flex()
-                                                    .flex_col()
-                                                    .gap_4()
+                                                v_flex()
+                                                    .gap_3()
                                                     .child(
-                                                        div()
-                                                            .flex()
+                                                        h_flex()
                                                             .justify_between()
-                                                            .items_center()
-                                                            .child(div().text_color(rgb(0xffffff)).child("Request Headers"))
+                                                            .child(Label::new("Request Headers").text_color(cx.theme().foreground))
                                                             .child(
-                                                                div()
-                                                                    .px_2()
-                                                                    .py_0p5()
-                                                                    .bg(rgb(0x81a1c1))
-                                                                    .text_color(rgb(0x2e3440))
-                                                                    .rounded_md()
-                                                                    .cursor_pointer()
-                                                                    .text_xs()
-                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                        this.add_header(cx);
+                                                                Button::new("add-header")
+                                                                    .label("+ Add Header")
+                                                                    .on_click(cx.listener(|this, _, window, cx| {
+                                                                        this.add_header(window, cx);
                                                                     }))
-                                                                    .child("+ Add Header")
                                                             )
                                                     )
                                                     .child(
-                                                        div()
-                                                            .flex()
-                                                            .flex_col()
+                                                        v_flex()
                                                             .gap_2()
                                                             .children(self.headers.iter().enumerate().map(|(i, row)| {
-                                                                div()
-                                                                    .flex()
+                                                                h_flex()
                                                                     .gap_2()
-                                                                    .items_center()
-                                                                    .child(div().flex_1().child(row.key.clone()))
-                                                                    .child(div().flex_1().child(row.value.clone()))
+                                                                    .child(Input::new(&row.key).flex_1())
+                                                                    .child(Input::new(&row.value).flex_1())
                                                                     .child(
-                                                                        div()
-                                                                            .px_2()
-                                                                            .bg(rgb(0xbf616a))
-                                                                            .text_color(rgb(0xffffff))
-                                                                            .rounded_md()
-                                                                            .cursor_pointer()
-                                                                            .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                                        Button::new(format!("remove-{}", i))
+                                                                            .label("X")
+                                                                            .on_click(cx.listener(move |this, _, _, cx| {
                                                                                 this.remove_header(i, cx);
                                                                             }))
-                                                                            .child("X")
                                                                     )
                                                             }))
                                                     )
                                             }
                                             RequestTab::Body => {
-                                                div()
-                                                    .flex()
-                                                    .flex_col()
-                                                    .gap_2()
+                                                v_flex()
                                                     .size_full()
-                                                    .child(div().text_color(rgb(0xffffff)).child("Request Body (JSON/Text)"))
-                                                    .child(div().flex_1().child(self.body_input.clone()))
-                                            },
+                                                    .gap_2()
+                                                    .child(Label::new("Request Body").text_color(cx.theme().foreground))
+                                                    .child(Input::new(&self.body_input).flex_1())
+                                            }
                                         }
                                     )
                             )
                     )
                     .child(
-                        // Response Panel (Right)
-                        div()
+                        // Response Panel
+                        v_flex()
                             .flex_1()
-                            .flex()
-                            .flex_col()
                             .p_4()
-                            .child(div().text_color(rgb(0xffffff)).child("Response"))
+                            .child(Label::new("Response").text_color(cx.theme().foreground))
                             .child(
-                                div()
-                                    .id("response-content")
+                                v_flex()
                                     .flex_1()
-                                    .mt_2()
-                                    .overflow_y_scroll()
+                                    .mt_4()
                                     .child(
                                         if let Some(resp) = &self.response {
-                                            div()
-                                                .flex()
-                                                .flex_col()
+                                            v_flex()
                                                 .gap_2()
-                                                .child(
-                                                    div()
-                                                        .flex()
-                                                        .gap_4()
-                                                        .child(format!("Status: {} {}", resp.status_code, resp.status_text))
-                                                        .child(format!("Size: {} bytes", resp.size))
-                                                )
+                                                .child(Label::new(format!("Status: {} {}", resp.status_code, resp.status_text)).text_color(cx.theme().foreground))
+                                                .child(Label::new(format!("Size: {} bytes", resp.size)).text_color(cx.theme().foreground))
                                                 .child(
                                                     div()
                                                         .mt_2()
                                                         .p_3()
-                                                        .bg(rgb(0x3b4252))
+                                                        .bg(cx.theme().muted)
                                                         .rounded_md()
-                                                        .text_sm()
                                                         .child(resp.body.clone())
                                                 )
                                         } else {
-                                            div()
-                                                .mt_4()
-                                                .text_color(rgb(0x616e88))
-                                                .child("No response yet. Enter URL and click Send.")
+                                            v_flex()
+                                                .child(
+                                                    Label::new("No response yet. Enter URL and click Send.")
+                                                        .text_color(cx.theme().muted_foreground)
+                                                )
                                         }
                                     )
                             )
@@ -354,18 +287,23 @@ impl Render for Hiposter {
 }
 
 fn main() {
-    application().run(|cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(1024.), px(768.0)), cx);
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                ..Default::default()
-            },
-            |_, cx| {
-                cx.new(|cx| Hiposter::new(cx))
-            },
-        )
-        .unwrap();
-        cx.activate(true);
+    let app = gpui_platform::application().with_assets(Assets);
+
+    app.run(move |cx| {
+        gpui_component::init(cx);
+
+        let window_options = WindowOptions {
+            window_bounds: Some(WindowBounds::centered(size(px(1024.), px(768.)), cx)),
+            ..Default::default()
+        };
+
+        cx.spawn(async move |cx| {
+            cx.open_window(window_options, |window, cx| {
+                let view = cx.new(|cx| Hiposter::new(window, cx));
+                cx.new(|cx| Root::new(view, window, cx))
+            })
+            .expect("Failed to open window");
+        })
+        .detach();
     });
 }
