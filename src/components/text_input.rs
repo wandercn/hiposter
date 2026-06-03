@@ -1,4 +1,5 @@
 use gpui::*;
+use gpui::prelude::*;
 
 pub struct TextInput {
     focus_handle: FocusHandle,
@@ -25,22 +26,22 @@ impl TextInput {
     }
 
     fn on_key_down(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        match event.keystroke.key.as_str() {
+        let key = &event.keystroke.key;
+        match key.as_str() {
             "backspace" => {
                 self.content.pop();
+            }
+            "space" => {
+                self.content.push(' ');
             }
             "enter" => {
                 // Handle enter if needed
             }
-            key if key.len() == 1 => {
-                self.content.push_str(key);
-            }
             _ => {
-                // Check if it's a character input through key_char
                 if let Some(key_char) = &event.keystroke.key_char {
-                    if key_char.len() == 1 {
-                         self.content.push_str(key_char);
-                    }
+                    self.content.push_str(key_char);
+                } else if key.len() == 1 {
+                    self.content.push_str(key);
                 }
             }
         }
@@ -53,24 +54,52 @@ impl Render for TextInput {
         let focused = self.focus_handle.is_focused(window);
         
         div()
+            .id(cx.entity_id().to_string())
             .flex_1()
             .px_2()
             .py_1()
             .bg(rgb(0x3b4252))
             .rounded_md()
             .border_1()
-            .border_color(if focused { rgb(0x81a1c1) } else { rgb(0x3b4252) })
+            .border_color(if focused { rgb(0x81a1c1) } else { rgb(0x4c566a) })
             .track_focus(&self.focus_handle)
+            .focusable()
             .on_key_down(cx.listener(Self::on_key_down))
             .on_mouse_down(MouseButton::Left, cx.listener(|this, _event, window, cx| {
                 window.focus(&this.focus_handle, cx);
             }))
             .child(
-                if self.content.is_empty() {
-                    div().text_color(rgb(0x4c566a)).child(self.placeholder.clone())
-                } else {
-                    div().child(self.content.clone())
-                }
+                div()
+                    .flex()
+                    .items_center()
+                    .child(
+                        if self.content.is_empty() {
+                            div()
+                                .text_color(rgb(0x4c566a))
+                                .child(self.placeholder.clone())
+                        } else {
+                            div()
+                                .text_color(rgb(0xd8dee9))
+                                .child(self.content.clone())
+                        }
+                    )
+                    .child(
+                        if focused {
+                            div()
+                                .ml_0p5()
+                                .w_px()
+                                .h_4()
+                                .bg(rgb(0x81a1c1))
+                        } else {
+                            div()
+                        }
+                    )
             )
+    }
+}
+
+impl Focusable for TextInput {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
     }
 }
