@@ -1,5 +1,4 @@
 use gpui::*;
-use gpui::prelude::*;
 
 pub struct TextInput {
     focus_handle: FocusHandle,
