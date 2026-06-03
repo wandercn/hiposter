@@ -55,7 +55,7 @@ impl Render for TextInput {
         div()
             .id(cx.entity_id().to_string())
             .flex_1()
-            .px_2()
+            .px_3()
             .py_1()
             .bg(rgb(0x3b4252))
             .rounded_md()
@@ -71,24 +71,25 @@ impl Render for TextInput {
                 div()
                     .flex()
                     .items_center()
+                    .min_h(px(24.0)) // 确保有最小高度
                     .child(
                         if self.content.is_empty() {
                             div()
-                                .text_color(rgb(0x4c566a))
+                                .text_color(rgb(0x616e88)) // 稍微亮一点的占位符颜色
                                 .child(self.placeholder.clone())
                         } else {
                             div()
-                                .text_color(rgb(0xd8dee9))
+                                .text_color(rgb(0xffffff)) // 纯白内容
                                 .child(self.content.clone())
                         }
                     )
                     .child(
                         if focused {
                             div()
-                                .ml_0p5()
+                                .ml_1()
                                 .w_px()
                                 .h_4()
-                                .bg(rgb(0x81a1c1))
+                                .bg(rgb(0xffffff)) // 纯白光标
                         } else {
                             div()
                         }

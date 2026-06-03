@@ -141,7 +141,7 @@ impl Render for Hiposter {
             .flex_col()
             .bg(rgb(0x2e3440))
             .size_full()
-            .text_color(rgb(0xd8dee9))
+            .text_color(rgb(0xffffff)) // 强化全局文字为纯白
             .child(
                 // Header / URL Bar area
                 div()
@@ -159,7 +159,7 @@ impl Render for Hiposter {
                             .bg(rgb(0x3b4252))
                             .rounded_md()
                             .cursor_pointer()
-                            .text_color(rgb(0x81a1c1))
+                            .text_color(rgb(0x88c0d0)) // 冰蓝色高亮方法
                             .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 this.toggle_method(cx);
                             }))
@@ -248,12 +248,12 @@ impl Render for Hiposter {
                                                             .flex()
                                                             .justify_between()
                                                             .items_center()
-                                                            .child(div().text_color(rgb(0xd8dee9)).child("Request Headers"))
+                                                            .child(div().text_color(rgb(0xffffff)).child("Request Headers"))
                                                             .child(
                                                                 div()
                                                                     .px_2()
                                                                     .py_0p5()
-                                                                    .bg(rgb(0x88c0d0))
+                                                                    .bg(rgb(0x81a1c1))
                                                                     .text_color(rgb(0x2e3440))
                                                                     .rounded_md()
                                                                     .cursor_pointer()
@@ -280,7 +280,7 @@ impl Render for Hiposter {
                                                                         div()
                                                                             .px_2()
                                                                             .bg(rgb(0xbf616a))
-                                                                            .text_color(rgb(0xd8dee9))
+                                                                            .text_color(rgb(0xffffff))
                                                                             .rounded_md()
                                                                             .cursor_pointer()
                                                                             .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
@@ -297,7 +297,7 @@ impl Render for Hiposter {
                                                     .flex_col()
                                                     .gap_2()
                                                     .size_full()
-                                                    .child(div().text_color(rgb(0xd8dee9)).child("Request Body (JSON/Text)"))
+                                                    .child(div().text_color(rgb(0xffffff)).child("Request Body (JSON/Text)"))
                                                     .child(div().flex_1().child(self.body_input.clone()))
                                             },
                                         }
@@ -311,7 +311,7 @@ impl Render for Hiposter {
                             .flex()
                             .flex_col()
                             .p_4()
-                            .child(div().text_color(rgb(0xd8dee9)).child("Response"))
+                            .child(div().text_color(rgb(0xffffff)).child("Response"))
                             .child(
                                 div()
                                     .id("response-content")
@@ -343,7 +343,7 @@ impl Render for Hiposter {
                                         } else {
                                             div()
                                                 .mt_4()
-                                                .text_color(rgb(0x4c566a))
+                                                .text_color(rgb(0x616e88))
                                                 .child("No response yet. Enter URL and click Send.")
                                         }
                                     )
@@ -355,9 +355,17 @@ impl Render for Hiposter {
 
 fn main() {
     application().run(|cx: &mut App| {
-        cx.open_window(WindowOptions::default(), |_, cx| {
-            cx.new(|cx| Hiposter::new(cx))
-        })
+        let bounds = Bounds::centered(None, size(px(1024.), px(768.0)), cx);
+        cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                ..Default::default()
+            },
+            |_, cx| {
+                cx.new(|cx| Hiposter::new(cx))
+            },
+        )
         .unwrap();
+        cx.activate(true);
     });
 }
