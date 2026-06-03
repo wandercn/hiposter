@@ -30,13 +30,13 @@ struct Hiposter {
 impl Hiposter {
     fn new(cx: &mut Context<Self>) -> Self {
         let url_input = cx.new(|cx| {
-            let mut input = TextInput::new(cx, "Enter URL...");
+            let mut input = TextInput::new(cx, "https://httpbin.org/get");
             input.set_content("https://httpbin.org/get".to_string(), cx);
             input
         });
 
         let body_input = cx.new(|cx| {
-            TextInput::new(cx, "Enter request body...")
+            TextInput::new(cx, "Request body...")
         });
 
         Self {
@@ -51,8 +51,8 @@ impl Hiposter {
     }
 
     fn add_header(&mut self, cx: &mut Context<Self>) {
-        let key = cx.new(|cx| TextInput::new(cx, "Key"));
-        let value = cx.new(|cx| TextInput::new(cx, "Value"));
+        let key = cx.new(|cx| TextInput::new(cx, "Header Key"));
+        let value = cx.new(|cx| TextInput::new(cx, "Header Value"));
         self.headers.push(HeaderRow { key, value });
         cx.notify();
     }
@@ -154,19 +154,25 @@ impl Render for Hiposter {
                         div()
                             .flex()
                             .items_center()
-                            .px_2()
+                            .px_3()
+                            .py_1()
                             .bg(rgb(0x3b4252))
                             .rounded_md()
                             .cursor_pointer()
+                            .text_color(rgb(0x81a1c1))
                             .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                 this.toggle_method(cx);
                             }))
                             .child(format!("{:?}", self.request.method))
                     )
-                    .child(self.url_input.clone())
                     .child(
                         div()
-                            .px_4()
+                            .flex_1()
+                            .child(self.url_input.clone())
+                    )
+                    .child(
+                        div()
+                            .px_6()
                             .py_1()
                             .bg(if self.loading { rgb(0x4c566a) } else { rgb(0x81a1c1) })
                             .text_color(rgb(0x2e3440))
@@ -203,6 +209,8 @@ impl Render for Hiposter {
                                             .py_2()
                                             .cursor_pointer()
                                             .bg(if self.active_tab == RequestTab::Headers { rgb(0x3b4252) } else { rgb(0x2e3440) })
+                                            .border_b_2()
+                                            .border_color(if self.active_tab == RequestTab::Headers { rgb(0x81a1c1) } else { rgb(0x2e3440) })
                                             .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                                 this.select_tab(RequestTab::Headers, cx);
                                             }))
@@ -214,6 +222,8 @@ impl Render for Hiposter {
                                             .py_2()
                                             .cursor_pointer()
                                             .bg(if self.active_tab == RequestTab::Body { rgb(0x3b4252) } else { rgb(0x2e3440) })
+                                            .border_b_2()
+                                            .border_color(if self.active_tab == RequestTab::Body { rgb(0x81a1c1) } else { rgb(0x2e3440) })
                                             .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                                 this.select_tab(RequestTab::Body, cx);
                                             }))
@@ -222,31 +232,36 @@ impl Render for Hiposter {
                             )
                             .child(
                                 div()
+                                    .id("request-panel-content")
                                     .flex_1()
                                     .p_4()
+                                    .overflow_y_scroll()
                                     .child(
                                         match self.active_tab {
                                             RequestTab::Headers => {
                                                 div()
                                                     .flex()
                                                     .flex_col()
-                                                    .gap_2()
+                                                    .gap_4()
                                                     .child(
                                                         div()
                                                             .flex()
                                                             .justify_between()
-                                                            .child("Headers")
+                                                            .items_center()
+                                                            .child(div().text_color(rgb(0xd8dee9)).child("Request Headers"))
                                                             .child(
                                                                 div()
                                                                     .px_2()
-                                                                    .bg(rgb(0x81a1c1))
+                                                                    .py_0p5()
+                                                                    .bg(rgb(0x88c0d0))
                                                                     .text_color(rgb(0x2e3440))
                                                                     .rounded_md()
                                                                     .cursor_pointer()
+                                                                    .text_xs()
                                                                     .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                                                         this.add_header(cx);
                                                                     }))
-                                                                    .child("+ Add")
+                                                                    .child("+ Add Header")
                                                             )
                                                     )
                                                     .child(
@@ -258,12 +273,14 @@ impl Render for Hiposter {
                                                                 div()
                                                                     .flex()
                                                                     .gap_2()
-                                                                    .child(row.key.clone())
-                                                                    .child(row.value.clone())
+                                                                    .items_center()
+                                                                    .child(div().flex_1().child(row.key.clone()))
+                                                                    .child(div().flex_1().child(row.value.clone()))
                                                                     .child(
                                                                         div()
                                                                             .px_2()
                                                                             .bg(rgb(0xbf616a))
+                                                                            .text_color(rgb(0xd8dee9))
                                                                             .rounded_md()
                                                                             .cursor_pointer()
                                                                             .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
@@ -274,7 +291,15 @@ impl Render for Hiposter {
                                                             }))
                                                     )
                                             }
-                                            RequestTab::Body => div().size_full().child(self.body_input.clone()),
+                                            RequestTab::Body => {
+                                                div()
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap_2()
+                                                    .size_full()
+                                                    .child(div().text_color(rgb(0xd8dee9)).child("Request Body (JSON/Text)"))
+                                                    .child(div().flex_1().child(self.body_input.clone()))
+                                            },
                                         }
                                     )
                             )
@@ -283,30 +308,45 @@ impl Render for Hiposter {
                         // Response Panel (Right)
                         div()
                             .flex_1()
+                            .flex()
+                            .flex_col()
                             .p_4()
+                            .child(div().text_color(rgb(0xd8dee9)).child("Response"))
                             .child(
-                                if let Some(resp) = &self.response {
-                                    div()
-                                        .flex()
-                                        .flex_col()
-                                        .gap_2()
-                                        .child(format!("Status: {} {}", resp.status_code, resp.status_text))
-                                        .child(format!("Size: {} bytes", resp.size))
-                                        .child(
+                                div()
+                                    .id("response-content")
+                                    .flex_1()
+                                    .mt_2()
+                                    .overflow_y_scroll()
+                                    .child(
+                                        if let Some(resp) = &self.response {
+                                            div()
+                                                .flex()
+                                                .flex_col()
+                                                .gap_2()
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .gap_4()
+                                                        .child(format!("Status: {} {}", resp.status_code, resp.status_text))
+                                                        .child(format!("Size: {} bytes", resp.size))
+                                                )
+                                                .child(
+                                                    div()
+                                                        .mt_2()
+                                                        .p_3()
+                                                        .bg(rgb(0x3b4252))
+                                                        .rounded_md()
+                                                        .text_sm()
+                                                        .child(resp.body.clone())
+                                                )
+                                        } else {
                                             div()
                                                 .mt_4()
-                                                .child("Body:")
-                                        )
-                                        .child(
-                                            div()
-                                                .p_2()
-                                                .bg(rgb(0x3b4252))
-                                                .rounded_md()
-                                                .child(resp.body.clone())
-                                        )
-                                } else {
-                                    div().child("No response yet")
-                                }
+                                                .text_color(rgb(0x4c566a))
+                                                .child("No response yet. Enter URL and click Send.")
+                                        }
+                                    )
                             )
                     )
             )
