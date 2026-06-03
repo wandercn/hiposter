@@ -1,20 +1,44 @@
 mod model;
 mod http;
+mod components;
 
 use gpui::*;
 use gpui_platform::application;
+use crate::components::text_input::TextInput;
 
 struct Hiposter {
+    url_input: Entity<TextInput>,
     request: model::HttpRequest,
     response: Option<model::HttpResponse>,
     loading: bool,
 }
 
 impl Hiposter {
+    fn new(cx: &mut Context<Self>) -> Self {
+        let url_input = cx.new(|cx| {
+            let mut input = TextInput::new(cx, "Enter URL...");
+            input.set_content("https://httpbin.org/get".to_string(), cx);
+            input
+        });
+
+        Self {
+            url_input,
+            request: model::HttpRequest::default(),
+            response: None,
+            loading: false,
+        }
+    }
+
     fn send_request(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if self.loading {
             return;
         }
+
+        let url = self.url_input.read(cx).content();
+        if url.trim().is_empty() {
+            return;
+        }
+        self.request.url = url;
 
         self.loading = true;
         self.response = None;
@@ -38,15 +62,26 @@ impl Hiposter {
                                 status_code: 0,
                                 status_text: format!("Error: {}", e),
                                 ..Default::default()
-                                });
-                            }
+                            });
                         }
+                    }
                     cx.notify();
                 })
                 .ok();
             }
         })
         .detach();
+    }
+
+    fn toggle_method(&mut self, cx: &mut Context<Self>) {
+        self.request.method = match self.request.method {
+            model::HttpMethod::GET => model::HttpMethod::POST,
+            model::HttpMethod::POST => model::HttpMethod::PUT,
+            model::HttpMethod::PUT => model::HttpMethod::DELETE,
+            model::HttpMethod::DELETE => model::HttpMethod::GET,
+            _ => model::HttpMethod::GET,
+        };
+        cx.notify();
     }
 }
 
@@ -73,17 +108,13 @@ impl Render for Hiposter {
                             .px_2()
                             .bg(rgb(0x3b4252))
                             .rounded_md()
+                            .cursor_pointer()
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                this.toggle_method(cx);
+                            }))
                             .child(format!("{:?}", self.request.method))
                     )
-                    .child(
-                        div()
-                            .flex_1()
-                            .px_2()
-                            .py_1()
-                            .bg(rgb(0x3b4252))
-                            .rounded_md()
-                            .child(self.request.url.clone())
-                    )
+                    .child(self.url_input.clone())
                     .child(
                         div()
                             .px_4()
@@ -149,11 +180,7 @@ impl Render for Hiposter {
 fn main() {
     application().run(|cx: &mut App| {
         cx.open_window(WindowOptions::default(), |_, cx| {
-            cx.new(|_cx| Hiposter {
-                request: model::HttpRequest::default(),
-                response: None,
-                loading: false,
-            })
+            cx.new(|cx| Hiposter::new(cx))
         })
         .unwrap();
     });
