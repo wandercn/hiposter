@@ -1,4 +1,5 @@
 mod model;
+mod http;
 
 use gpui::*;
 use gpui_platform::application;
