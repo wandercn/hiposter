@@ -5,12 +5,11 @@ use gpui::prelude::*;
 use gpui::*;
 use gpui_component::{
     button::*,
-    input::{Input, InputState},
+    input::{Input, InputState, InputEvent},
     tab::{Tab, TabBar},
     label::Label,
     menu::{DropdownMenu, PopupMenuItem},
     separator::Separator,
-    scroll::ScrollableElement,
     resizable::*,
     highlighter::Language,
     *,
@@ -39,6 +38,7 @@ struct KeyValueRow {
 struct Hiposter {
     url_input: Entity<InputState>,
     body_input: Entity<InputState>,
+    response_body_input: Entity<InputState>,
     params: Vec<KeyValueRow>,
     headers: Vec<KeyValueRow>,
     request: model::HttpRequest,
@@ -46,6 +46,7 @@ struct Hiposter {
     loading: bool,
     active_tab: RequestTab,
     active_response_view: ResponseView,
+    _subscriptions: Vec<Subscription>,
 }
 
 impl Hiposter {
@@ -62,9 +63,17 @@ impl Hiposter {
                 .multi_line(true)
         });
 
+        let response_body_input = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder("Response body...")
+                .multi_line(true)
+                .code_editor(Language::Json)
+        });
+
         Self {
             url_input,
             body_input,
+            response_body_input,
             params: Vec::new(),
             headers: Vec::new(),
             request: model::HttpRequest::default(),
@@ -72,12 +81,34 @@ impl Hiposter {
             loading: false,
             active_tab: RequestTab::Params,
             active_response_view: ResponseView::Pretty,
+            _subscriptions: Vec::new(),
         }
     }
 
     fn add_param(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key"));
         let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value"));
+        
+        let view = cx.weak_entity();
+        let sub_k = cx.subscribe(&key, move |_, _, event, cx| {
+            if matches!(event, InputEvent::Change) {
+                view.update(cx, |this, cx| {
+                    this.sync_params_to_url_deferred(cx);
+                }).ok();
+            }
+        });
+        
+        let view = cx.weak_entity();
+        let sub_v = cx.subscribe(&value, move |_, _, event, cx| {
+            if matches!(event, InputEvent::Change) {
+                view.update(cx, |this, cx| {
+                    this.sync_params_to_url_deferred(cx);
+                }).ok();
+            }
+        });
+
+        self._subscriptions.push(sub_k);
+        self._subscriptions.push(sub_v);
         self.params.push(KeyValueRow { key, value });
         cx.notify();
     }
@@ -95,6 +126,11 @@ impl Hiposter {
 
     fn remove_header(&mut self, index: usize, _cx: &mut Context<Self>) {
         self.headers.remove(index);
+    }
+
+    fn sync_params_to_url_deferred(&mut self, _cx: &mut Context<Self>) {
+        // Will be handled in render loop via sync_params_to_url if needed
+        // Or we can trigger a re-render.
     }
 
     fn sync_params_to_url(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -123,9 +159,11 @@ impl Hiposter {
         }
         
         let url_clone = url.clone();
-        self.url_input.update(cx, |this, cx| {
-            this.set_value(url_clone, window, cx);
-        });
+        if self.url_input.read(cx).value().to_string() != url_clone {
+            self.url_input.update(cx, |this, cx| {
+                this.set_value(url_clone, window, cx);
+            });
+        }
     }
 
     fn send_request(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
@@ -133,11 +171,11 @@ impl Hiposter {
             return;
         }
 
-        let url = self.url_input.read(cx).value();
+        let url = self.url_input.read(cx).value().to_string();
         if url.trim().is_empty() {
             return;
         }
-        self.request.url = url.to_string();
+        self.request.url = url;
         self.request.body = self.body_input.read(cx).value().to_string();
         
         // Collect headers
@@ -194,7 +232,7 @@ impl Hiposter {
         self.active_tab = tab;
     }
 
-    fn set_content_type(&mut self, content_type: &str, _window: &mut Window, cx: &mut Context<Self>) {
+    fn set_content_type(&mut self, content_type: &str, cx: &mut Context<Self>) {
         self.request.content_type = content_type.to_string();
         if content_type == "application/json" {
             self.body_input.update(cx, |this, cx| {
@@ -224,6 +262,29 @@ impl Render for Hiposter {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let view = cx.weak_entity();
         
+        // Sync URL and Response display
+        self.sync_params_to_url(window, cx);
+        
+        if let Some(resp) = &self.response {
+            let content = resp.body.clone();
+            let display_content = if self.active_response_view == ResponseView::Pretty {
+                if let Ok(v) = serde_json::from_str::<Value>(&content) {
+                    serde_json::to_string_pretty(&v).unwrap_or(content)
+                } else {
+                    content
+                }
+            } else {
+                content
+            };
+            
+            if self.response_body_input.read(cx).value().to_string() != display_content {
+                self.response_body_input.update(cx, |this, cx| {
+                    this.set_value(display_content, window, cx);
+                    this.set_highlighter(Language::Json, cx);
+                });
+            }
+        }
+
         v_flex()
             .size_full()
             .bg(cx.theme().background)
@@ -241,14 +302,10 @@ impl Render for Hiposter {
                                 let view = view.clone();
                                 move |menu, _, _| {
                                     let methods = [
-                                        model::HttpMethod::GET,
-                                        model::HttpMethod::POST,
-                                        model::HttpMethod::PUT,
-                                        model::HttpMethod::DELETE,
-                                        model::HttpMethod::PATCH,
-                                        model::HttpMethod::HEAD,
+                                        model::HttpMethod::GET, model::HttpMethod::POST,
+                                        model::HttpMethod::PUT, model::HttpMethod::DELETE,
+                                        model::HttpMethod::PATCH, model::HttpMethod::HEAD,
                                     ];
-                                    
                                     let mut menu = menu;
                                     for method in methods {
                                         let method_clone = method.clone();
@@ -287,7 +344,6 @@ impl Render for Hiposter {
                             .child(
                                 resizable_panel()
                                     .child(
-                                        // Request Panel (Top)
                                         v_flex()
                                             .size_full()
                                             .child(
@@ -309,7 +365,7 @@ impl Render for Hiposter {
                                                                 )
                                                                 .child(v_flex().gap_2().children(self.params.iter().enumerate().map(|(i, row)| {
                                                                     h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
-                                                                    .child(Button::new(format!("rem-p-{}", i)).label("X").on_click(cx.listener(move |this, _, window, cx| { this.remove_param(i, cx); this.sync_params_to_url(window, cx); cx.notify(); })))
+                                                                    .child(Button::new(format!("rem-p-{}", i)).label("X").on_click(cx.listener(move |this, _, _, cx| { this.remove_param(i, cx); cx.notify(); })))
                                                                 })))
                                                             }
                                                             RequestTab::Headers => {
@@ -334,8 +390,8 @@ impl Render for Hiposter {
                                                                                     let mut menu = menu;
                                                                                     for (label, val) in types {
                                                                                         let view = view.clone();
-                                                                                        menu = menu.item(PopupMenuItem::new(label).on_click(move |_, window, cx| {
-                                                                                            view.update(cx, |this, cx| this.set_content_type(val, window, cx)).ok();
+                                                                                        menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _, cx| {
+                                                                                            view.update(cx, |this, cx| this.set_content_type(val, cx)).ok();
                                                                                         }));
                                                                                     }
                                                                                     menu
@@ -355,7 +411,6 @@ impl Render for Hiposter {
                             .child(
                                 resizable_panel()
                                     .child(
-                                        // Response Panel (Bottom)
                                         v_flex()
                                             .size_full()
                                             .p_4()
@@ -385,30 +440,7 @@ impl Render for Hiposter {
                                                                         .child(Label::new(format!("Size: {} bytes", resp.size)).text_color(cx.theme().foreground))
                                                                 )
                                                                 .child(Separator::horizontal())
-                                                                .child(
-                                                                    v_flex()
-                                                                        .flex_1()
-                                                                        .overflow_y_scrollbar()
-                                                                        .child(
-                                                                            div()
-                                                                                .mt_2()
-                                                                                .p_3()
-                                                                                .bg(cx.theme().muted)
-                                                                                .rounded_md()
-                                                                                .child({
-                                                                                    let content = resp.body.clone();
-                                                                                    if self.active_response_view == ResponseView::Pretty {
-                                                                                        if let Ok(v) = serde_json::from_str::<Value>(&content) {
-                                                                                            serde_json::to_string_pretty(&v).unwrap_or(content)
-                                                                                        } else {
-                                                                                            content
-                                                                                        }
-                                                                                    } else {
-                                                                                        content
-                                                                                    }
-                                                                                })
-                                                                        )
-                                                                )
+                                                                .child(Input::new(&self.response_body_input).flex_1().disabled(true))
                                                         } else {
                                                             v_flex()
                                                                 .child(
