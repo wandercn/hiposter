@@ -1,12 +1,16 @@
 mod model;
 mod http;
 
+use gpui::prelude::*;
 use gpui::*;
 use gpui_component::{
     button::*,
     input::{Input, InputState},
     tab::{Tab, TabBar},
     label::Label,
+    menu::{DropdownMenu, PopupMenuItem},
+    separator::Separator,
+    scroll::ScrollableElement,
     *,
 };
 use gpui_component_assets::Assets;
@@ -56,8 +60,8 @@ impl Hiposter {
     }
 
     fn add_header(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let key = cx.new(|cx| InputState::new(window, cx).placeholder("Header Key"));
-        let value = cx.new(|cx| InputState::new(window, cx).placeholder("Header Value"));
+        let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key"));
+        let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value"));
         self.headers.push(HeaderRow { key, value });
         cx.notify();
     }
@@ -124,14 +128,8 @@ impl Hiposter {
         .detach();
     }
 
-    fn toggle_method(&mut self, _cx: &mut Context<Self>) {
-        self.request.method = match self.request.method {
-            model::HttpMethod::GET => model::HttpMethod::POST,
-            model::HttpMethod::POST => model::HttpMethod::PUT,
-            model::HttpMethod::PUT => model::HttpMethod::DELETE,
-            model::HttpMethod::DELETE => model::HttpMethod::GET,
-            _ => model::HttpMethod::GET,
-        };
+    fn set_method(&mut self, method: model::HttpMethod, _cx: &mut Context<Self>) {
+        self.request.method = method;
     }
 
     fn select_tab(&mut self, tab: RequestTab, _cx: &mut Context<Self>) {
@@ -141,6 +139,8 @@ impl Hiposter {
 
 impl Render for Hiposter {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let view = cx.weak_entity();
+        
         v_flex()
             .size_full()
             .bg(cx.theme().background)
@@ -152,11 +152,37 @@ impl Render for Hiposter {
                     .border_color(cx.theme().border)
                     .gap_3()
                     .child(
-                        Button::new("method")
+                        Button::new("method-dropdown")
                             .label(format!("{:?}", self.request.method))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.toggle_method(cx);
-                            }))
+                            .dropdown_menu({
+                                let view = view.clone();
+                                move |menu, _, _| {
+                                    let methods = [
+                                        model::HttpMethod::GET,
+                                        model::HttpMethod::POST,
+                                        model::HttpMethod::PUT,
+                                        model::HttpMethod::DELETE,
+                                        model::HttpMethod::PATCH,
+                                        model::HttpMethod::HEAD,
+                                    ];
+                                    
+                                    let mut menu = menu;
+                                    for method in methods {
+                                        let method_clone = method.clone();
+                                        let view = view.clone();
+                                        menu = menu.item(
+                                            PopupMenuItem::new(format!("{:?}", method))
+                                                .on_click(move |_, _, cx| {
+                                                    view.update(cx, |this, cx| {
+                                                        this.set_method(method_clone.clone(), cx);
+                                                        cx.notify();
+                                                    }).ok();
+                                                })
+                                        );
+                                    }
+                                    menu
+                                }
+                            })
                     )
                     .child(Input::new(&self.url_input).flex_1())
                     .child(
@@ -232,6 +258,7 @@ impl Render for Hiposter {
                                                                             .label("X")
                                                                             .on_click(cx.listener(move |this, _, _, cx| {
                                                                                 this.remove_header(i, cx);
+                                                                                cx.notify();
                                                                             }))
                                                                     )
                                                             }))
@@ -262,15 +289,26 @@ impl Render for Hiposter {
                                         if let Some(resp) = &self.response {
                                             v_flex()
                                                 .gap_2()
-                                                .child(Label::new(format!("Status: {} {}", resp.status_code, resp.status_text)).text_color(cx.theme().foreground))
-                                                .child(Label::new(format!("Size: {} bytes", resp.size)).text_color(cx.theme().foreground))
+                                                .size_full()
                                                 .child(
-                                                    div()
-                                                        .mt_2()
-                                                        .p_3()
-                                                        .bg(cx.theme().muted)
-                                                        .rounded_md()
-                                                        .child(resp.body.clone())
+                                                    h_flex()
+                                                        .gap_4()
+                                                        .child(Label::new(format!("Status: {} {}", resp.status_code, resp.status_text)).text_color(cx.theme().foreground))
+                                                        .child(Label::new(format!("Size: {} bytes", resp.size)).text_color(cx.theme().foreground))
+                                                )
+                                                .child(Separator::horizontal())
+                                                .child(
+                                                    v_flex()
+                                                        .flex_1()
+                                                        .overflow_y_scrollbar()
+                                                        .child(
+                                                            div()
+                                                                .mt_2()
+                                                                .p_3()
+                                                                .bg(cx.theme().muted)
+                                                                .rounded_md()
+                                                                .child(resp.body.clone())
+                                                        )
                                                 )
                                         } else {
                                             v_flex()
