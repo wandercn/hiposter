@@ -11,6 +11,7 @@ use gpui_component::{
     menu::{DropdownMenu, PopupMenuItem},
     separator::Separator,
     scroll::ScrollableElement,
+    resizable::*,
     *,
 };
 use gpui_component_assets::Assets;
@@ -196,127 +197,136 @@ impl Render for Hiposter {
                     )
             )
             .child(
-                // Main Content
-                h_flex()
+                // Main Content - Vertical Split
+                div()
                     .flex_1()
                     .child(
-                        // Request Panel
-                        v_flex()
-                            .flex_1()
-                            .border_r_1()
-                            .border_color(cx.theme().border)
+                        v_resizable("main-split")
                             .child(
-                                TabBar::new("tabs")
+                                resizable_panel()
                                     .child(
-                                        Tab::new()
-                                            .label("Headers")
-                                            .selected(self.active_tab == RequestTab::Headers)
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                this.select_tab(RequestTab::Headers, cx);
-                                            })),
-                                    )
-                                    .child(
-                                        Tab::new()
-                                            .label("Body")
-                                            .selected(self.active_tab == RequestTab::Body)
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                this.select_tab(RequestTab::Body, cx);
-                                            })),
-                                    )
-                            )
-                            .child(
-                                v_flex()
-                                    .flex_1()
-                                    .p_4()
-                                    .child(
-                                        match self.active_tab {
-                                            RequestTab::Headers => {
-                                                v_flex()
-                                                    .gap_3()
+                                        // Request Panel (Top)
+                                        v_flex()
+                                            .size_full()
+                                            .child(
+                                                TabBar::new("tabs")
                                                     .child(
-                                                        h_flex()
-                                                            .justify_between()
-                                                            .child(Label::new("Request Headers").text_color(cx.theme().foreground))
-                                                            .child(
-                                                                Button::new("add-header")
-                                                                    .label("+ Add Header")
-                                                                    .on_click(cx.listener(|this, _, window, cx| {
-                                                                        this.add_header(window, cx);
-                                                                    }))
-                                                            )
+                                                        Tab::new()
+                                                            .label("Headers")
+                                                            .selected(self.active_tab == RequestTab::Headers)
+                                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                                this.select_tab(RequestTab::Headers, cx);
+                                                            })),
                                                     )
                                                     .child(
-                                                        v_flex()
-                                                            .gap_2()
-                                                            .children(self.headers.iter().enumerate().map(|(i, row)| {
-                                                                h_flex()
-                                                                    .gap_2()
-                                                                    .child(Input::new(&row.key).flex_1())
-                                                                    .child(Input::new(&row.value).flex_1())
+                                                        Tab::new()
+                                                            .label("Body")
+                                                            .selected(self.active_tab == RequestTab::Body)
+                                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                                this.select_tab(RequestTab::Body, cx);
+                                                            })),
+                                                    )
+                                            )
+                                            .child(
+                                                v_flex()
+                                                    .flex_1()
+                                                    .p_4()
+                                                    .child(
+                                                        match self.active_tab {
+                                                            RequestTab::Headers => {
+                                                                v_flex()
+                                                                    .gap_3()
                                                                     .child(
-                                                                        Button::new(format!("remove-{}", i))
-                                                                            .label("X")
-                                                                            .on_click(cx.listener(move |this, _, _, cx| {
-                                                                                this.remove_header(i, cx);
-                                                                                cx.notify();
+                                                                        h_flex()
+                                                                            .justify_between()
+                                                                            .child(Label::new("Request Headers").text_color(cx.theme().foreground))
+                                                                            .child(
+                                                                                Button::new("add-header")
+                                                                                    .label("+ Add Header")
+                                                                                    .on_click(cx.listener(|this, _, window, cx| {
+                                                                                        this.add_header(window, cx);
+                                                                                    }))
+                                                                            )
+                                                                    )
+                                                                    .child(
+                                                                        v_flex()
+                                                                            .gap_2()
+                                                                            .children(self.headers.iter().enumerate().map(|(i, row)| {
+                                                                                h_flex()
+                                                                                    .gap_2()
+                                                                                    .child(Input::new(&row.key).flex_1())
+                                                                                    .child(Input::new(&row.value).flex_1())
+                                                                                    .child(
+                                                                                        Button::new(format!("remove-{}", i))
+                                                                                            .label("X")
+                                                                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                                                                this.remove_header(i, cx);
+                                                                                                cx.notify();
+                                                                                            }))
+                                                                                    )
                                                                             }))
                                                                     )
-                                                            }))
+                                                            }
+                                                            RequestTab::Body => {
+                                                                v_flex()
+                                                                    .size_full()
+                                                                    .gap_2()
+                                                                    .child(Label::new("Request Body").text_color(cx.theme().foreground))
+                                                                    .child(Input::new(&self.body_input).flex_1())
+                                                            }
+                                                        }
                                                     )
-                                            }
-                                            RequestTab::Body => {
-                                                v_flex()
-                                                    .size_full()
-                                                    .gap_2()
-                                                    .child(Label::new("Request Body").text_color(cx.theme().foreground))
-                                                    .child(Input::new(&self.body_input).flex_1())
-                                            }
-                                        }
+                                            )
                                     )
                             )
-                    )
-                    .child(
-                        // Response Panel
-                        v_flex()
-                            .flex_1()
-                            .p_4()
-                            .child(Label::new("Response").text_color(cx.theme().foreground))
                             .child(
-                                v_flex()
-                                    .flex_1()
-                                    .mt_4()
+                                resizable_panel()
                                     .child(
-                                        if let Some(resp) = &self.response {
-                                            v_flex()
-                                                .gap_2()
-                                                .size_full()
-                                                .child(
-                                                    h_flex()
-                                                        .gap_4()
-                                                        .child(Label::new(format!("Status: {} {}", resp.status_code, resp.status_text)).text_color(cx.theme().foreground))
-                                                        .child(Label::new(format!("Size: {} bytes", resp.size)).text_color(cx.theme().foreground))
-                                                )
-                                                .child(Separator::horizontal())
-                                                .child(
-                                                    v_flex()
-                                                        .flex_1()
-                                                        .overflow_y_scrollbar()
-                                                        .child(
-                                                            div()
-                                                                .mt_2()
-                                                                .p_3()
-                                                                .bg(cx.theme().muted)
-                                                                .rounded_md()
-                                                                .child(resp.body.clone())
-                                                        )
-                                                )
-                                        } else {
-                                            v_flex()
-                                                .child(
-                                                    Label::new("No response yet. Enter URL and click Send.")
-                                                        .text_color(cx.theme().muted_foreground)
-                                                )
-                                        }
+                                        // Response Panel (Bottom)
+                                        v_flex()
+                                            .size_full()
+                                            .p_4()
+                                            .border_t_1()
+                                            .border_color(cx.theme().border)
+                                            .child(Label::new("Response").text_color(cx.theme().foreground))
+                                            .child(
+                                                v_flex()
+                                                    .flex_1()
+                                                    .mt_4()
+                                                    .child(
+                                                        if let Some(resp) = &self.response {
+                                                            v_flex()
+                                                                .gap_2()
+                                                                .size_full()
+                                                                .child(
+                                                                    h_flex()
+                                                                        .gap_4()
+                                                                        .child(Label::new(format!("Status: {} {}", resp.status_code, resp.status_text)).text_color(cx.theme().foreground))
+                                                                        .child(Label::new(format!("Size: {} bytes", resp.size)).text_color(cx.theme().foreground))
+                                                                )
+                                                                .child(Separator::horizontal())
+                                                                .child(
+                                                                    v_flex()
+                                                                        .flex_1()
+                                                                        .overflow_y_scrollbar()
+                                                                        .child(
+                                                                            div()
+                                                                                .mt_2()
+                                                                                .p_3()
+                                                                                .bg(cx.theme().muted)
+                                                                                .rounded_md()
+                                                                                .child(resp.body.clone())
+                                                                        )
+                                                                )
+                                                        } else {
+                                                            v_flex()
+                                                                .child(
+                                                                    Label::new("No response yet. Enter URL and click Send.")
+                                                                        .text_color(cx.theme().muted_foreground)
+                                                                )
+                                                        }
+                                                    )
+                                            )
                                     )
                             )
                     )
