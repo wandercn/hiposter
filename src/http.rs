@@ -40,7 +40,7 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
 
     let start = std::time::Instant::now();
     let response = builder.send().await?;
-    let duration = start.elapsed();
+    let _duration = start.elapsed();
 
     let status = response.status();
     let status_text = status.canonical_reason().unwrap_or("").to_string();
