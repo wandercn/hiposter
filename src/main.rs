@@ -6,11 +6,19 @@ use gpui::*;
 use gpui_platform::application;
 use crate::components::text_input::TextInput;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum RequestTab {
+    Headers,
+    Body,
+}
+
 struct Hiposter {
     url_input: Entity<TextInput>,
+    body_input: Entity<TextInput>,
     request: model::HttpRequest,
     response: Option<model::HttpResponse>,
     loading: bool,
+    active_tab: RequestTab,
 }
 
 impl Hiposter {
@@ -21,11 +29,17 @@ impl Hiposter {
             input
         });
 
+        let body_input = cx.new(|cx| {
+            TextInput::new(cx, "Enter request body...")
+        });
+
         Self {
             url_input,
+            body_input,
             request: model::HttpRequest::default(),
             response: None,
             loading: false,
+            active_tab: RequestTab::Headers,
         }
     }
 
@@ -39,6 +53,7 @@ impl Hiposter {
             return;
         }
         self.request.url = url;
+        self.request.body = self.body_input.read(cx).content();
 
         self.loading = true;
         self.response = None;
@@ -81,6 +96,11 @@ impl Hiposter {
             model::HttpMethod::DELETE => model::HttpMethod::GET,
             _ => model::HttpMethod::GET,
         };
+        cx.notify();
+    }
+
+    fn select_tab(&mut self, tab: RequestTab, cx: &mut Context<Self>) {
+        self.active_tab = tab;
         cx.notify();
     }
 }
@@ -140,8 +160,48 @@ impl Render for Hiposter {
                             .flex_1()
                             .border_r_1()
                             .border_color(rgb(0x4c566a))
-                            .p_4()
-                            .child("Request Headers / Body (TBD)")
+                            .flex()
+                            .flex_col()
+                            .child(
+                                // Tabs
+                                div()
+                                    .flex()
+                                    .border_b_1()
+                                    .border_color(rgb(0x4c566a))
+                                    .child(
+                                        div()
+                                            .px_4()
+                                            .py_2()
+                                            .cursor_pointer()
+                                            .bg(if self.active_tab == RequestTab::Headers { rgb(0x3b4252) } else { rgb(0x2e3440) })
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.select_tab(RequestTab::Headers, cx);
+                                            }))
+                                            .child("Headers")
+                                    )
+                                    .child(
+                                        div()
+                                            .px_4()
+                                            .py_2()
+                                            .cursor_pointer()
+                                            .bg(if self.active_tab == RequestTab::Body { rgb(0x3b4252) } else { rgb(0x2e3440) })
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.select_tab(RequestTab::Body, cx);
+                                            }))
+                                            .child("Body")
+                                    )
+                            )
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .p_4()
+                                    .child(
+                                        match self.active_tab {
+                                            RequestTab::Headers => div().child("Headers list (TBD)"),
+                                            RequestTab::Body => div().size_full().child(self.body_input.clone()),
+                                        }
+                                    )
+                            )
                     )
                     .child(
                         // Response Panel (Right)
