@@ -367,8 +367,17 @@ impl Render for ApiTab {
         let request_content = match self.active_tab {
             RequestTab::Params => {
                 v_flex().gap_3().child(
-                    h_flex().justify_between().child(Label::new("Query Parameters").text_color(colors.text))
-                    .child(Button::new("add-param").label("+ Add Param").on_click(cx.listener(|this, _, window, cx| this.add_param(window, cx))))
+                    h_flex().justify_between().items_center()
+                        .child(Label::new("Query Parameters").text_color(colors.text))
+                        .child(
+                            Button::new("add-param")
+                                .icon(IconName::Plus)
+                                .label("Add")
+                                .small()
+                                .ghost()
+                                .on_click(cx.listener(|this, _, window, cx| this.add_param(window, cx)))
+                        )
+
                 )
                 .child(v_flex().gap_2().children(self.params.iter().enumerate().map(|(i, row)| {
                     h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
@@ -378,8 +387,17 @@ impl Render for ApiTab {
             }
             RequestTab::Headers => {
                 v_flex().gap_3().child(
-                    h_flex().justify_between().child(Label::new("Request Headers").text_color(colors.text))
-                    .child(Button::new("add-header").label("+ Add Header").on_click(cx.listener(|this, _, window, cx| this.add_header(window, cx))))
+                    h_flex().justify_between().items_center()
+                        .child(Label::new("Request Headers").text_color(colors.text))
+                        .child(
+                            Button::new("add-header")
+                                .icon(IconName::Plus)
+                                .label("Add")
+                                .small()
+                                .ghost()
+                                .on_click(cx.listener(|this, _, window, cx| this.add_header(window, cx)))
+                        )
+
                 )
                 .child(v_flex().gap_2().children(self.headers.iter().enumerate().map(|(i, row)| {
                     h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
@@ -523,6 +541,15 @@ impl Render for ApiTab {
             }
         } else {
             v_flex()
+                .size_full()
+                .items_center()
+                .justify_center()
+                .gap_4()
+                .child(
+                    Icon::new(IconName::Globe)
+                        .size_12()
+                        .text_color(colors.subtext)
+                )
                 .child(
                     Label::new("No response yet. Enter URL and click Send.")
                         .text_color(colors.subtext)
@@ -575,6 +602,7 @@ impl Render for ApiTab {
                     .child(
                         Button::new("send")
                             .primary()
+                            .icon(IconName::ArrowRight)
                             .label(if self.loading { "Sending..." } else { "Send" })
                             .disabled(self.loading)
                             .on_click({
@@ -636,9 +664,21 @@ impl Render for ApiTab {
                                                     .suffix(
                                                         if let Some(resp) = &self.response {
                                                             h_flex().gap_4().items_center().px_4()
-                                                                .child(Label::new(format!("{} {}", resp.status_code, resp.status_text)).text_color(if resp.status_code < 400 { colors.green } else { colors.red }))
-                                                                .child(Label::new(format!("{} ms", resp.elapsed_ms)).text_color(colors.subtext))
-                                                                .child(Label::new(format!("{} bytes", resp.size)).text_color(colors.subtext))
+                                                                .child(
+                                                                    h_flex().gap_1().items_center()
+                                                                        .child(Icon::new(if resp.status_code < 400 { IconName::CircleCheck } else { IconName::CircleX }).small().text_color(if resp.status_code < 400 { colors.green } else { colors.red }))
+                                                                        .child(Label::new(format!("{} {}", resp.status_code, resp.status_text)).text_color(if resp.status_code < 400 { colors.green } else { colors.red }))
+                                                                )
+                                                                .child(
+                                                                    h_flex().gap_1().items_center()
+                                                                        .child(Icon::new(IconName::Info).small().text_color(colors.subtext))
+                                                                        .child(Label::new(format!("{} ms", resp.elapsed_ms)).text_color(colors.subtext))
+                                                                )
+                                                                .child(
+                                                                    h_flex().gap_1().items_center()
+                                                                        .child(Icon::new(IconName::Inbox).small().text_color(colors.subtext))
+                                                                        .child(Label::new(format!("{} bytes", resp.size)).text_color(colors.subtext))
+                                                                )
                                                         } else {
                                                             div()
                                                         }
@@ -890,7 +930,13 @@ impl Render for Hiposter {
                                             .p_3()
                                             .border_b_1()
                                             .border_color(colors.border)
-                                            .child(Label::new("History").text_color(colors.text))
+                                            .child(
+                                                h_flex()
+                                                    .gap_2()
+                                                    .items_center()
+                                                    .child(Icon::new(IconName::Inbox).small().text_color(colors.text))
+                                                    .child(Label::new("History").text_color(colors.text))
+                                            )
                                             .child(
                                                 Button::new("theme-dropdown")
                                                     .label(format!("Theme: {}", self.theme.name()))
@@ -938,11 +984,33 @@ impl Render for Hiposter {
                                                     .on_click(cx.listener(move |this, _, window, cx| {
                                                         this.add_tab(request.clone(), window, cx);
                                                     }))
-                                                    .child(Label::new(format!("{:?}", method)).text_color(match method {
-                                                        model::HttpMethod::GET => colors.green,
-                                                        model::HttpMethod::POST => colors.yellow,
-                                                        _ => colors.text,
-                                                    }).w_12())
+                                                    .child(
+                                                        h_flex()
+                                                            .gap_2()
+                                                            .items_center()
+                                                            .child(
+                                                                Icon::new(match method {
+                                                                    model::HttpMethod::GET => IconName::ArrowDown,
+                                                                    model::HttpMethod::POST => IconName::ArrowUp,
+                                                                    _ => IconName::Info,
+                                                                })
+                                                                .small()
+                                                                .text_color(match method {
+                                                                    model::HttpMethod::GET => colors.green,
+                                                                    model::HttpMethod::POST => colors.yellow,
+                                                                    _ => colors.text,
+                                                                })
+                                                            )
+                                                            .child(
+                                                                Label::new(format!("{:?}", method))
+                                                                    .text_color(match method {
+                                                                        model::HttpMethod::GET => colors.green,
+                                                                        model::HttpMethod::POST => colors.yellow,
+                                                                        _ => colors.text,
+                                                                    })
+                                                                    .w_12()
+                                                            )
+                                                    )
                                                     .child(Label::new(url).text_color(colors.text).ml_2().flex_1())
                                                     .child(
                                                         div()
@@ -1002,9 +1070,15 @@ impl Render for Hiposter {
                                                                 cx.notify();
                                                             }))
                                                             .child(
-                                                                Label::new(tab_title)
-                                                                    .text_color(if is_active { colors.blue } else { colors.subtext })
-                                                                    .w_48()
+                                                                h_flex()
+                                                                    .gap_2()
+                                                                    .items_center()
+                                                                    .child(Icon::new(IconName::Globe).small().text_color(if is_active { colors.blue } else { colors.subtext }))
+                                                                    .child(
+                                                                        Label::new(tab_title)
+                                                                            .text_color(if is_active { colors.blue } else { colors.subtext })
+                                                                            .w_40()
+                                                                    )
                                                             )
                                                             .child(
                                                                 Button::new(format!("close-tab-{}", i))
