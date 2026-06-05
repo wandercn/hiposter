@@ -1,4 +1,4 @@
-use crate::model::{Header, HttpMethod, HttpRequest, HttpResponse};
+use crate::model::{Header, HttpMethod, HttpRequest, HttpResponse, AuthType};
 use anyhow::{Context, Result};
 use reqwest::{Client, Method};
 use std::time::Duration;
@@ -6,7 +6,7 @@ use std::time::Duration;
 pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
     let client = Client::builder()
         .timeout(Duration::from_secs(30))
-        .danger_accept_invalid_certs(true) // More lenient for debugging
+        .danger_accept_invalid_certs(true)
         .build()
         .context("Failed to build HTTP client")?;
 
@@ -39,6 +39,19 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
         }
     }
 
+    // Handle Auth
+    match &request.auth.auth_type {
+        AuthType::Bearer => {
+            if !request.auth.token.is_empty() {
+                builder = builder.bearer_auth(&request.auth.token);
+            }
+        }
+        AuthType::Basic => {
+            builder = builder.basic_auth(&request.auth.username, Some(&request.auth.password));
+        }
+        AuthType::None => {}
+    }
+
     // Add body if it's not a GET/HEAD request
     if !matches!(request.method, HttpMethod::GET | HttpMethod::HEAD) && !request.body.is_empty() {
         builder = builder.body(request.body.clone());
@@ -46,7 +59,7 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
 
     let start = std::time::Instant::now();
     let response = builder.send().await.context("Failed to send request")?;
-    let _duration = start.elapsed();
+    let elapsed_ms = start.elapsed().as_millis();
 
     let status = response.status();
     let status_text = status.canonical_reason().unwrap_or("").to_string();
@@ -60,7 +73,6 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
         });
     }
 
-    // Use bytes() and convert to lossy string to avoid UTF-8 errors
     let bytes = response.bytes().await.context("Failed to read response body")?;
     let size = bytes.len();
     let body = String::from_utf8_lossy(&bytes).to_string();
@@ -71,6 +83,7 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
         headers,
         body,
         size,
+        elapsed_ms,
     })
 }
 
@@ -91,5 +104,6 @@ mod tests {
         let response = result.unwrap();
         assert_eq!(response.status_code, 200);
         assert!(response.body.contains("url"));
+        assert!(response.elapsed_ms > 0);
     }
 }
