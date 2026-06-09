@@ -27,11 +27,6 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
     builder = builder.header("Accept", "*/*");
     builder = builder.header("Connection", "keep-alive");
 
-    // Add content-type if body is present
-    if !request.body.is_empty() {
-        builder = builder.header("Content-Type", &request.content_type);
-    }
-
     // Add custom headers
     for header in &request.headers {
         if !header.key.trim().is_empty() {
@@ -52,9 +47,32 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
         AuthType::None => {}
     }
 
-    // Add body if it's not a GET/HEAD request
-    if !matches!(request.method, HttpMethod::GET | HttpMethod::HEAD) && !request.body.is_empty() {
-        builder = builder.body(request.body.clone());
+    // Handle Body
+    use crate::model::HttpBody;
+    if !matches!(request.method, HttpMethod::GET | HttpMethod::HEAD) {
+        match &request.body {
+            HttpBody::Raw(raw) if !raw.is_empty() => {
+                builder = builder.header("Content-Type", &request.content_type);
+                builder = builder.body(raw.clone());
+            }
+            HttpBody::FormData(form) => {
+                let mut multipart = reqwest::multipart::Form::new();
+                for item in form {
+                    if !item.key.is_empty() {
+                        multipart = multipart.text(item.key.clone(), item.value.clone());
+                    }
+                }
+                builder = builder.multipart(multipart);
+            }
+            HttpBody::UrlEncoded(form) => {
+                let params: Vec<(String, String)> = form.iter()
+                    .filter(|h| !h.key.is_empty())
+                    .map(|h| (h.key.clone(), h.value.clone()))
+                    .collect();
+                builder = builder.form(&params);
+            }
+            _ => {}
+        }
     }
 
     let start = std::time::Instant::now();

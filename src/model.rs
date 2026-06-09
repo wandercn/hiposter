@@ -17,7 +17,7 @@ impl Default for HttpMethod {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Header {
     pub key: String,
     pub value: String,
@@ -49,13 +49,27 @@ impl Default for AuthData {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum HttpBody {
+    None,
+    Raw(String),
+    FormData(Vec<Header>),
+    UrlEncoded(Vec<Header>),
+}
+
+impl Default for HttpBody {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpRequest {
     pub method: HttpMethod,
     pub url: String,
     pub headers: Vec<Header>,
     pub params: Vec<Header>,
-    pub body: String,
+    pub body: HttpBody,
     pub content_type: String,
     pub auth: AuthData,
 }
@@ -64,10 +78,10 @@ impl Default for HttpRequest {
     fn default() -> Self {
         Self {
             method: HttpMethod::GET,
-            url: "https://httpbin.org/get".to_string(),
+            url: "".to_string(),
             headers: Vec::new(),
             params: Vec::new(),
-            body: String::new(),
+            body: HttpBody::None,
             content_type: "application/json".to_string(),
             auth: AuthData::default(),
         }

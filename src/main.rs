@@ -14,10 +14,49 @@ use gpui_component::{
     highlighter::Language,
     *,
 };
-use gpui_component_assets::Assets;
+use gpui_component_assets::Assets as GpuiAssets;
 use serde::Serialize;
 use serde_json::Value;
 use std::fs;
+
+const TRASH_2_SVG: &[u8] = br#"<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>"#;
+
+pub enum CustomIconName {
+    Trash,
+}
+
+impl IconNamed for CustomIconName {
+    fn path(self) -> SharedString {
+        match self {
+            CustomIconName::Trash => "icons/trash-2.svg".into(),
+        }
+    }
+}
+
+impl RenderOnce for CustomIconName {
+    fn render(self, _: &mut Window, _: &mut App) -> impl IntoElement {
+        Icon::new(self)
+    }
+}
+
+struct AppAssets;
+
+impl AssetSource for AppAssets {
+    fn load(&self, path: &str) -> gpui::Result<Option<std::borrow::Cow<'static, [u8]>>> {
+        if path == "icons/trash-2.svg" {
+            return Ok(Some(std::borrow::Cow::Borrowed(TRASH_2_SVG)));
+        }
+        GpuiAssets.load(path)
+    }
+
+    fn list(&self, path: &str) -> gpui::Result<Vec<SharedString>> {
+        let mut list = GpuiAssets.list(path)?;
+        if "icons/".starts_with(path) {
+            list.push("icons/trash-2.svg".into());
+        }
+        Ok(list)
+    }
+}
 
 fn format_json(value: &Value) -> String {
     let mut buf = Vec::new();
@@ -177,6 +216,8 @@ struct ApiTab {
     response_body_input: Entity<InputState>,
     params: Vec<KeyValueRow>,
     headers: Vec<KeyValueRow>,
+    form_data: Vec<KeyValueRow>,
+    urlencoded: Vec<KeyValueRow>,
     request: model::HttpRequest,
     response: Option<model::HttpResponse>,
     loading: bool,
@@ -191,21 +232,55 @@ impl EventEmitter<model::HttpRequest> for ApiTab {}
 impl ApiTab {
     fn with_request(request: model::HttpRequest, theme: AppTheme, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let url = request.url.clone();
-        let body = request.body.clone();
         let auth = request.auth.clone();
 
         let url_input = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("https://httpbin.org/get")
+                .placeholder("Enter URL...")
                 .default_value(url)
         });
+
+        cx.observe(&url_input, |_, _, cx| {
+            cx.notify();
+        })
+        .detach();
+
+        let mut headers = Vec::new();
+        for h in &request.headers {
+            let key = cx.new(|cx| InputState::new(window, cx).default_value(h.key.clone()));
+            let value = cx.new(|cx| InputState::new(window, cx).default_value(h.value.clone()));
+            headers.push(KeyValueRow { key, value });
+        }
+
+        let mut form_data = Vec::new();
+        let mut urlencoded = Vec::new();
+        let mut body_str = String::new();
+
+        match &request.body {
+            model::HttpBody::Raw(raw) => body_str = raw.clone(),
+            model::HttpBody::FormData(form) => {
+                for item in form {
+                    let key = cx.new(|cx| InputState::new(window, cx).default_value(item.key.clone()));
+                    let value = cx.new(|cx| InputState::new(window, cx).default_value(item.value.clone()));
+                    form_data.push(KeyValueRow { key, value });
+                }
+            }
+            model::HttpBody::UrlEncoded(form) => {
+                for item in form {
+                    let key = cx.new(|cx| InputState::new(window, cx).default_value(item.key.clone()));
+                    let value = cx.new(|cx| InputState::new(window, cx).default_value(item.value.clone()));
+                    urlencoded.push(KeyValueRow { key, value });
+                }
+            }
+            model::HttpBody::None => {}
+        }
 
         let body_input = cx.new(|cx| {
             let mut state = InputState::new(window, cx)
                 .placeholder("Request body...")
                 .multi_line(true)
                 .code_editor(Language::Json);
-            state.set_value(body, window, cx);
+            state.set_value(body_str, window, cx);
             state
         });
 
@@ -232,12 +307,6 @@ impl ApiTab {
                 .code_editor(Language::Json)
         });
 
-        let headers = request.headers.iter().map(|h| {
-            let key = cx.new(|cx| InputState::new(window, cx).default_value(h.key.clone()));
-            let value = cx.new(|cx| InputState::new(window, cx).default_value(h.value.clone()));
-            KeyValueRow { key, value }
-        }).collect();
-
         Self {
             title: "New Request".to_string(),
             url_input,
@@ -248,6 +317,8 @@ impl ApiTab {
             response_body_input,
             params: Vec::new(),
             headers,
+            form_data,
+            urlencoded,
             request,
             response: None,
             loading: false,
@@ -280,9 +351,61 @@ impl ApiTab {
         self.headers.remove(index);
     }
 
+    fn add_form_data(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key"));
+        let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value"));
+        self.form_data.push(KeyValueRow { key, value });
+        cx.notify();
+    }
+
+    fn remove_form_data(&mut self, index: usize, _cx: &mut Context<Self>) {
+        self.form_data.remove(index);
+    }
+
+    fn add_urlencoded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key"));
+        let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value"));
+        self.urlencoded.push(KeyValueRow { key, value });
+        cx.notify();
+    }
+
+    fn remove_urlencoded(&mut self, index: usize, _cx: &mut Context<Self>) {
+        self.urlencoded.remove(index);
+    }
+
     fn update_request_state(&mut self, cx: &mut Context<Self>) {
         self.request.url = self.url_input.read(cx).value().to_string();
-        self.request.body = self.body_input.read(cx).value().to_string();
+        
+        // Handle Body based on content type
+        match self.request.content_type.as_str() {
+            "application/none" => self.request.body = model::HttpBody::None,
+            "multipart/form-data" => {
+                let mut items = Vec::new();
+                for row in &self.form_data {
+                    let key = row.key.read(cx).value().to_string();
+                    let value = row.value.read(cx).value().to_string();
+                    if !key.is_empty() {
+                        items.push(model::Header { key, value });
+                    }
+                }
+                self.request.body = model::HttpBody::FormData(items);
+            }
+            "application/x-www-form-urlencoded" => {
+                let mut items = Vec::new();
+                for row in &self.urlencoded {
+                    let key = row.key.read(cx).value().to_string();
+                    let value = row.value.read(cx).value().to_string();
+                    if !key.is_empty() {
+                        items.push(model::Header { key, value });
+                    }
+                }
+                self.request.body = model::HttpBody::UrlEncoded(items);
+            }
+            _ => {
+                // Default to Raw for JSON, Text, etc.
+                self.request.body = model::HttpBody::Raw(self.body_input.read(cx).value().to_string());
+            }
+        }
         
         self.request.headers.clear();
         for row in &self.headers {
@@ -413,7 +536,15 @@ impl Render for ApiTab {
                             .child(Button::new("body-type-dropdown").label(self.request.content_type.clone()).dropdown_menu({
                                 let view = view.clone();
                                 move |menu, _, _| {
-                                    let types = [("None", "application/none"), ("JSON", "application/json"), ("Text", "text/plain"), ("XML", "application/xml"), ("HTML", "text/html")];
+                                    let types = [
+                                        ("None", "application/none"), 
+                                        ("JSON", "application/json"), 
+                                        ("Text", "text/plain"), 
+                                        ("Form-data", "multipart/form-data"),
+                                        ("x-www-form-urlencoded", "application/x-www-form-urlencoded"),
+                                        ("XML", "application/xml"), 
+                                        ("HTML", "text/html")
+                                    ];
                                     let mut menu = menu;
                                     for (label, val) in types {
                                         let view = view.clone();
@@ -427,16 +558,48 @@ impl Render for ApiTab {
                             .when(self.request.content_type == "application/json", |this| {
                                 this.child(Button::new("format-json").label("Format JSON").on_click(cx.listener(|this, _, window, cx| this.format_request_json(window, cx))))
                             })
+                            .when(self.request.content_type == "multipart/form-data", |this| {
+                                this.child(Button::new("add-form-data").icon(IconName::Plus).label("Add").small().ghost().on_click(cx.listener(|this, _, window, cx| this.add_form_data(window, cx))))
+                            })
+                            .when(self.request.content_type == "application/x-www-form-urlencoded", |this| {
+                                this.child(Button::new("add-urlencoded").icon(IconName::Plus).label("Add").small().ghost().on_click(cx.listener(|this, _, window, cx| this.add_urlencoded(window, cx))))
+                            })
                     )
                     .child(
-                        div()
-                            .flex_1()
-                            .bg(colors.bg) // 纯白背景以确保 JSON 高亮对比度
-                            .border_1()
-                            .border_color(colors.border)
-                            .p_1()
-                            .rounded_md()
-                            .child(Input::new(&self.body_input).size_full())
+                        match self.request.content_type.as_str() {
+                            "application/none" => {
+                                v_flex().flex_1().items_center().justify_center()
+                                    .child(Label::new("This request does not have a body").text_color(colors.subtext))
+                                    .into_any_element()
+                            }
+                            "multipart/form-data" => {
+                                v_flex().flex_1().overflow_y_scrollbar()
+                                    .children(self.form_data.iter().enumerate().map(|(i, row)| {
+                                        h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
+                                        .child(Button::new(format!("rem-fd-{}", i)).label("X").on_click(cx.listener(move |this, _, _, cx| { this.remove_form_data(i, cx); cx.notify(); })))
+                                    }))
+                                    .into_any_element()
+                            }
+                            "application/x-www-form-urlencoded" => {
+                                v_flex().flex_1().overflow_y_scrollbar()
+                                    .children(self.urlencoded.iter().enumerate().map(|(i, row)| {
+                                        h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
+                                        .child(Button::new(format!("rem-ue-{}", i)).label("X").on_click(cx.listener(move |this, _, _, cx| { this.remove_urlencoded(i, cx); cx.notify(); })))
+                                    }))
+                                    .into_any_element()
+                            }
+                            _ => {
+                                div()
+                                    .flex_1()
+                                    .bg(colors.bg) // 纯白背景以确保 JSON 高亮对比度
+                                    .border_1()
+                                    .border_color(colors.border)
+                                    .p_1()
+                                    .rounded_md()
+                                    .child(Input::new(&self.body_input).size_full())
+                                    .into_any_element()
+                            }
+                        }
                     )
                     .into_any_element()
             }
@@ -628,7 +791,7 @@ impl Render for ApiTab {
                         v_resizable("main-split")
                             .child(
                                 resizable_panel()
-                                    .size(px(320.))
+                                    .size(px(450.))
                                     .min_size(px(100.))
                                     .child(
                                         v_flex()
@@ -730,6 +893,12 @@ impl Hiposter {
             this.execute_request(tab, request.clone(), cx);
         });
         self._subscriptions.push(sub);
+
+        let obs = cx.observe(&tab, |_, _, cx| {
+            cx.notify();
+        });
+        self._subscriptions.push(obs);
+
         self.tabs.push(tab);
         self.active_tab_index = self.tabs.len() - 1;
         cx.notify();
@@ -896,6 +1065,12 @@ impl Hiposter {
         self.history.truncate(50);
         self.save_history();
     }
+
+    fn clear_all_history(&mut self, cx: &mut Context<Self>) {
+        self.history.clear();
+        self.save_history();
+        cx.notify();
+    }
 }
 
 impl Render for Hiposter {
@@ -907,211 +1082,250 @@ impl Render for Hiposter {
             self.add_tab(model::HttpRequest::default(), window, cx);
         }
 
-        h_flex()
+        v_flex()
             .size_full()
             .bg(colors.bg)
             .child(
-                h_resizable("global-split")
+                TitleBar::new()
+                    .child(div().flex_1()) // Spacer to push theme to the right
                     .child(
-                        resizable_panel()
-                            .size(px(260.))
-                            .min_size(px(150.))
+                        h_flex()
+                            .px_3()
                             .child(
-                                // Left Sidebar: History
-                                v_flex()
-                                    .size_full()
-                                    .bg(colors.sidebar)
-                                    .border_r_1()
-                                    .border_color(colors.border)
+                                Button::new("theme-dropdown")
+                                    .label(format!("Theme: {}", self.theme.name()))
+                                    .ghost()
+                                    .small()
+                                    .dropdown_caret(true)
+                                    .dropdown_menu({
+                                        let view = view.clone();
+                                        move |menu, _, _| {
+                                            let themes = [
+                                                AppTheme::GitHubLight,
+                                                AppTheme::SolarizedLight,
+                                                AppTheme::OneLight,
+                                                AppTheme::VitesseLight,
+                                                AppTheme::CatppuccinLatte,
+                                            ];
+                                            let mut menu = menu;
+                                            for t in themes {
+                                                let view = view.clone();
+                                                menu = menu.item(PopupMenuItem::new(t.name()).on_click(move |_, window, cx| {
+                                                    view.update(cx, |this, cx| {
+                                                        this.set_theme(t, window, cx);
+                                                    }).ok();
+                                                }));
+                                            }
+                                            menu
+                                        }
+                                    })
+                            )
+                    )
+            )
+            .child(
+                h_flex()
+                    .flex_1()
+                    .size_full()
+                    .child(
+                        h_resizable("global-split")
+                            .child(
+                                resizable_panel()
+                                    .size(px(280.))
+                                    .min_size(px(150.))
                                     .child(
-                                        h_flex()
-                                            .justify_between()
-                                            .items_center()
-                                            .p_3()
-                                            .border_b_1()
+                                        // Left Sidebar: History
+                                        v_flex()
+                                            .size_full()
+                                            .bg(colors.sidebar)
+                                            .border_r_1()
                                             .border_color(colors.border)
                                             .child(
-                                                h_flex()
-                                                    .gap_2()
-                                                    .items_center()
-                                                    .child(Icon::new(IconName::Inbox).small().text_color(colors.text))
-                                                    .child(Label::new("History").text_color(colors.text))
-                                            )
-                                            .child(
-                                                Button::new("theme-dropdown")
-                                                    .label(format!("Theme: {}", self.theme.name()))
-                                                    .ghost()
-                                                    .small()
-                                                    .dropdown_caret(true)
-                                                    .dropdown_menu({
-                                                        let view = view.clone();
-                                                        move |menu, _, _| {
-                                                            let themes = [
-                                                                AppTheme::GitHubLight,
-                                                                AppTheme::SolarizedLight,
-                                                                AppTheme::OneLight,
-                                                                AppTheme::VitesseLight,
-                                                                AppTheme::CatppuccinLatte,
-                                                            ];
-                                                            let mut menu = menu;
-                                                            for t in themes {
-                                                                let view = view.clone();
-                                                                menu = menu.item(PopupMenuItem::new(t.name()).on_click(move |_, window, cx| {
-                                                                    view.update(cx, |this, cx| {
-                                                                        this.set_theme(t, window, cx);
-                                                                    }).ok();
-                                                                }));
-                                                            }
-                                                            menu
-                                                        }
-                                                    })
-                                            )
-                                    )
-                                    .child(
-                                        v_flex()
-                                            .flex_1()
-                                            .overflow_y_scrollbar()
-                                            .children(self.history.iter().enumerate().map(|(i, item)| {
-                                                let url = item.request.url.clone();
-                                                let method = item.request.method.clone();
-                                                let request = item.request.clone();
-                                                h_flex()
-                                                    .id(("history-item", i))
-                                                    .group("history-item")
-                                                    .p_2()
-                                                    .cursor_pointer()
-                                                    .hover(|s| s.bg(colors.surface))
-                                                    .on_click(cx.listener(move |this, _, window, cx| {
-                                                        this.add_tab(request.clone(), window, cx);
-                                                    }))
+                                                v_flex()
+                                                    .border_b_1()
+                                                    .border_color(colors.border)
                                                     .child(
                                                         h_flex()
-                                                            .gap_2()
+                                                            .justify_between()
                                                             .items_center()
+                                                            .p_3()
                                                             .child(
-                                                                Icon::new(match method {
-                                                                    model::HttpMethod::GET => IconName::ArrowDown,
-                                                                    model::HttpMethod::POST => IconName::ArrowUp,
-                                                                    _ => IconName::Info,
-                                                                })
-                                                                .small()
-                                                                .text_color(match method {
-                                                                    model::HttpMethod::GET => colors.green,
-                                                                    model::HttpMethod::POST => colors.yellow,
-                                                                    _ => colors.text,
-                                                                })
+                                                                h_flex()
+                                                                    .gap_2()
+                                                                    .items_center()
+                                                                    .child(Icon::new(IconName::Inbox).small().text_color(colors.text))
+                                                                    .child(Label::new("History").text_color(colors.text))
                                                             )
                                                             .child(
-                                                                Label::new(format!("{:?}", method))
-                                                                    .text_color(match method {
-                                                                        model::HttpMethod::GET => colors.green,
-                                                                        model::HttpMethod::POST => colors.yellow,
-                                                                        _ => colors.text,
-                                                                    })
-                                                                    .w_12()
-                                                            )
-                                                    )
-                                                    .child(Label::new(url).text_color(colors.text).ml_2().flex_1())
-                                                    .child(
-                                                        div()
-                                                            .invisible()
-                                                            .group_hover("history-item", |s| s.visible())
-                                                            .child(
-                                                                Button::new(format!("del-hist-{}", i))
-                                                                    .icon(IconName::Close)
+                                                                Button::new("clear-history")
+                                                                    .icon(CustomIconName::Trash)
                                                                     .ghost()
-                                                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                                                        this.history.remove(i);
-                                                                        this.save_history();
-                                                                        cx.notify();
+                                                                    .small()
+                                                                    .on_click(cx.listener(|this, _, _, cx| {
+                                                                        this.clear_all_history(cx);
                                                                     }))
                                                             )
                                                     )
-                                            }))
-                                    )
-                            )
-                    )
-                    .child(
-                        resizable_panel()
-                            .flex_1()
-                            .child(
-                                v_flex()
-                                    .size_full()
-                                    .child(
-                                        // Tab Bar
-                                        h_flex()
-                                            .bg(colors.sidebar)
-                                            .border_b_1()
-                                            .border_color(colors.border)
+                                            )
                                             .child(
-                                                h_flex()
+                                                v_flex()
                                                     .flex_1()
-                                                    .children(self.tabs.iter().enumerate().map(|(i, tab)| {
-                                                        let is_active = i == self.active_tab_index;
-                                                        let tab_title = tab.read(cx).request.url.clone();
-                                                        let tab_title = if tab_title.is_empty() { "New Request".to_string() } else { 
-                                                            if tab_title.len() > 30 {
-                                                                format!("...{}", &tab_title[tab_title.len()-27..])
-                                                            } else {
-                                                                tab_title
-                                                            }
-                                                        };
-                                                        
+                                                    .overflow_y_scrollbar()
+                                                    .children(self.history.iter().enumerate().map(|(i, item)| {
+                                                        let url = item.request.url.clone();
+                                                        let method = item.request.method.clone();
+                                                        let request = item.request.clone();
                                                         h_flex()
-                                                            .id(("tab", i))
-                                                            .px_4()
-                                                            .py_2()
-                                                            .border_r_1()
-                                                            .border_color(colors.border)
+                                                            .id(("history-item", i))
+                                                            .group("history-item")
+                                                            .p_2()
                                                             .cursor_pointer()
-                                                            .bg(if is_active { colors.surface } else { colors.sidebar })
-                                                            .on_click(cx.listener(move |this, _, _, cx| {
-                                                                this.active_tab_index = i;
-                                                                cx.notify();
+                                                            .hover(|s| s.bg(colors.surface))
+                                                            .on_click(cx.listener(move |this, _, window, cx| {
+                                                                this.add_tab(request.clone(), window, cx);
                                                             }))
                                                             .child(
                                                                 h_flex()
                                                                     .gap_2()
                                                                     .items_center()
-                                                                    .child(Icon::new(IconName::Globe).small().text_color(if is_active { colors.blue } else { colors.subtext }))
                                                                     .child(
-                                                                        Label::new(tab_title)
-                                                                            .text_color(if is_active { colors.blue } else { colors.subtext })
-                                                                            .w_40()
+                                                                        Icon::new(match method {
+                                                                            model::HttpMethod::GET => IconName::ArrowDown,
+                                                                            model::HttpMethod::POST => IconName::ArrowUp,
+                                                                            _ => IconName::Info,
+                                                                        })
+                                                                        .small()
+                                                                        .text_color(match method {
+                                                                            model::HttpMethod::GET => colors.green,
+                                                                            model::HttpMethod::POST => colors.yellow,
+                                                                            _ => colors.text,
+                                                                        })
+                                                                    )
+                                                                    .child(
+                                                                        Label::new(format!("{:?}", method))
+                                                                            .text_color(match method {
+                                                                                model::HttpMethod::GET => colors.green,
+                                                                                model::HttpMethod::POST => colors.yellow,
+                                                                                _ => colors.text,
+                                                                            })
+                                                                            .w_12()
                                                                     )
                                                             )
+                                                            .child(Label::new(url).text_color(colors.text).ml_2().flex_1())
                                                             .child(
-                                                                Button::new(format!("close-tab-{}", i))
-                                                                    .icon(IconName::Close)
-                                                                    .ghost()
-                                                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                                                        this.close_tab(i, cx);
-                                                                    }))
+                                                                div()
+                                                                    .invisible()
+                                                                    .group_hover("history-item", |s| s.visible())
+                                                                    .child(
+                                                                        Button::new(format!("del-hist-{}", i))
+                                                                            .icon(IconName::Close)
+                                                                            .ghost()
+                                                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                                                cx.stop_propagation();
+                                                                                this.history.remove(i);
+                                                                                this.save_history();
+                                                                                cx.notify();
+                                                                            }))
+                                                                    )
                                                             )
-                                                            .when(is_active, |this| {
-                                                                this.border_b_2().border_color(colors.blue)
-                                                            })
                                                     }))
                                             )
+                                    )
+                            )
+                            .child(
+                                resizable_panel()
+                                    .flex_1()
+                                    .child(
+                                        v_flex()
+                                            .size_full()
                                             .child(
+                                                // Tab Bar
                                                 h_flex()
+                                                    .h(px(34.))
+                                                    .bg(colors.sidebar)
+                                                    .border_b_1()
+                                                    .border_color(colors.border)
                                                     .child(
-                                                        Button::new("add-tab")
-                                                            .icon(IconName::Plus)
-                                                            .ghost()
-                                                            .on_click(cx.listener(|this, _, window, cx| {
-                                                                this.add_tab(model::HttpRequest::default(), window, cx);
+                                                        h_flex()
+                                                            .flex_1()
+                                                            .h_full()
+                                                            .overflow_hidden()
+                                                            .children(self.tabs.iter().enumerate().map(|(i, tab)| {
+                                                                let is_active = i == self.active_tab_index;
+                                                                let tab_title = tab.read(cx).url_input.read(cx).value().to_string();
+                                                                let tab_title = if tab_title.is_empty() { "New Request".to_string() } else { tab_title };
+                                                                
+                                                                h_flex()
+                                                                    .id(("tab", i))
+                                                                    .flex_1()
+                                                                    .min_w(px(60.))
+                                                                    .max_w(px(180.))
+                                                                    .h_full()
+                                                                    .px_3()
+                                                                    .border_r_1()
+                                                                    .border_color(colors.border)
+                                                                    .cursor_pointer()
+                                                                    .bg(if is_active { colors.surface } else { colors.sidebar })
+                                                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                                                        this.active_tab_index = i;
+                                                                        cx.notify();
+                                                                    }))
+                                                                    .child(
+                                                                        h_flex()
+                                                                            .flex_1()
+                                                                            .gap_2()
+                                                                            .items_center()
+                                                                            .overflow_hidden()
+                                                                            .child(Icon::new(IconName::Globe).small().text_color(if is_active { colors.blue } else { colors.subtext }))
+                                                                            .child(
+                                                                                Label::new(tab_title)
+                                                                                    .text_color(if is_active { colors.blue } else { colors.subtext })
+                                                                            )
+                                                                    )
+                                                                    .child(
+                                                                        div()
+                                                                            .ml_1()
+                                                                            .child(
+                                                                                Button::new(format!("close-tab-{}", i))
+                                                                                    .icon(IconName::Close)
+                                                                                    .ghost()
+                                                                                    .small()
+                                                                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                                                                        this.close_tab(i, cx);
+                                                                                    }))
+                                                                            )
+                                                                    )
+                                                                    .when(is_active, |this| {
+                                                                        this.border_b_2().border_color(colors.blue)
+                                                                    })
                                                             }))
                                                     )
+                                                    .child(
+                                                        h_flex()
+                                                            .flex_none()
+                                                            .h_full()
+                                                            .px_1()
+                                                            .border_l_1()
+                                                            .border_color(colors.border)
+                                                            .items_center()
+                                                            .bg(colors.sidebar)
+                                                            .child(
+                                                                Button::new("add-tab")
+                                                                    .icon(IconName::Plus)
+                                                                    .ghost()
+                                                                    .on_click(cx.listener(|this, _, window, cx| {
+                                                                        this.add_tab(model::HttpRequest::default(), window, cx);
+                                                                    }))
+                                                            )
+                                                    )
                                             )
-                                    )
-                                    .child(
-                                        // Active Tab Content
-                                        if let Some(tab) = self.tabs.get(self.active_tab_index) {
-                                            div().flex_1().bg(colors.bg).child(tab.clone())
-                                        } else {
-                                            div().flex_1().bg(colors.bg)
-                                        }
+                                            .child(
+                                                // Active Tab Content
+                                                if let Some(tab) = self.tabs.get(self.active_tab_index) {
+                                                    div().flex_1().bg(colors.bg).child(tab.clone())
+                                                } else {
+                                                    div().flex_1().bg(colors.bg)
+                                                }
+                                            )
                                     )
                             )
                     )
@@ -1126,13 +1340,14 @@ fn main() {
         .expect("Failed to build tokio runtime");
     let _guard = _runtime.enter();
 
-    let app = gpui_platform::application().with_assets(Assets);
+    let app = gpui_platform::application().with_assets(AppAssets);
 
     app.run(move |cx| {
         gpui_component::init(cx);
 
         let window_options = WindowOptions {
-            window_bounds: Some(WindowBounds::centered(size(px(1200.), px(800.)), cx)),
+            window_bounds: Some(WindowBounds::centered(size(px(1400.), px(900.)), cx)),
+            titlebar: Some(TitleBar::title_bar_options()),
             ..Default::default()
         };
 
