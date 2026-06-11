@@ -330,19 +330,6 @@ impl Render for Hiposter {
                                     }
                                 })
                         )
-                        .child(
-                            Button::new("about-dropdown").label("About").ghost().small().dropdown_caret(true)
-                                .dropdown_menu({
-                                    move |menu, _, _| {
-                                        menu
-                                            .item(PopupMenuItem::new("Version: 0.1.0").disabled(true))
-                                            .item(PopupMenuItem::new("Author: wander").disabled(true))
-                                            .item(PopupMenuItem::new("Source Code").on_click(|_, _window, cx| {
-                                                cx.open_url("https://github.com/wandercn/hiposter");
-                                            }))
-                                    }
-                                })
-                        )
                     )
             )
             .child(
