@@ -4,10 +4,8 @@ use gpui_component::{
     button::{Button, ButtonVariants},
     label::Label,
     v_flex,
-    Icon,
     Sizable,
 };
-use crate::assets::CustomIconName;
 
 pub struct AboutWindow;
 
@@ -34,17 +32,7 @@ impl Render for AboutWindow {
                 div()
                     .w_32()
                     .h_32()
-                    .bg(theme.colors.primary)
-                    .rounded_xl()
-                    .shadow_lg()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .child(
-                        Icon::new(CustomIconName::Trash)
-                            .size(rems(4.0))
-                            .text_color(theme.colors.primary_foreground)
-                    )
+                    .child(gpui::img("icons/logo.png"))
             )
             .child(
                 v_flex()
