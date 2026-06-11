@@ -4,10 +4,12 @@ pub mod theme;
 pub mod assets;
 pub mod api_tab;
 pub mod app;
+pub mod about;
 
 use gpui::*;
 use assets::AppAssets;
 use app::Hiposter;
+use about::AboutWindow;
 use serde_json::Value;
 use serde::Serialize;
 
@@ -22,17 +24,14 @@ pub fn format_json(value: &Value) -> String {
     }
 }
 
-actions!(hiposter, [OpenGithub, Quit]);
+actions!(hiposter, [OpenAbout, Quit]);
 
 fn build_mac_menus() -> Vec<Menu> {
     vec![
         Menu {
             name: "HiPoster".into(),
             items: vec![
-                MenuItem::action("About HiPoster (v0.1.0)", OpenGithub),
-                MenuItem::action("Author: wander", OpenGithub),
-                MenuItem::separator(),
-                MenuItem::action("Source Code", OpenGithub),
+                MenuItem::action("About HiPoster", OpenAbout),
                 MenuItem::separator(),
                 MenuItem::action("Quit HiPoster", Quit),
             ],
@@ -69,8 +68,20 @@ pub fn run() {
 
         cx.set_menus(build_mac_menus());
         
-        cx.on_action(|_: &OpenGithub, cx: &mut App| {
-            cx.open_url("https://github.com/wandercn/hiposter");
+        cx.on_action(|_: &OpenAbout, cx: &mut App| {
+            let options = WindowOptions {
+                window_bounds: Some(WindowBounds::centered(size(px(400.), px(300.)), cx)),
+                titlebar: Some(gpui_component::TitleBar::title_bar_options()),
+                window_decorations: Some(WindowDecorations::Server),
+                kind: WindowKind::Normal,
+                is_movable: true,
+                ..Default::default()
+            };
+            
+            cx.open_window(options, |window, cx| {
+                let view = cx.new(|cx| AboutWindow::new(cx));
+                cx.new(|cx| gpui_component::Root::new(view, window, cx))
+            }).ok();
         });
         
         cx.on_action(|_: &Quit, cx: &mut App| {
@@ -97,4 +108,5 @@ pub fn run() {
         .detach();
     });
 }
+
 
