@@ -22,6 +22,39 @@ pub fn format_json(value: &Value) -> String {
     }
 }
 
+actions!(hiposter, [OpenGithub, Quit]);
+
+fn build_mac_menus() -> Vec<Menu> {
+    vec![
+        Menu {
+            name: "HiPoster".into(),
+            items: vec![
+                MenuItem::action("About HiPoster (v0.1.0)", OpenGithub),
+                MenuItem::action("Author: wander", OpenGithub),
+                MenuItem::separator(),
+                MenuItem::action("Source Code", OpenGithub),
+                MenuItem::separator(),
+                MenuItem::action("Quit HiPoster", Quit),
+            ],
+            disabled: false,
+        },
+        Menu {
+            name: "Edit".into(),
+            items: vec![
+                MenuItem::action("Undo", gpui_component::input::Undo),
+                MenuItem::action("Redo", gpui_component::input::Redo),
+                MenuItem::separator(),
+                MenuItem::action("Cut", gpui_component::input::Cut),
+                MenuItem::action("Copy", gpui_component::input::Copy),
+                MenuItem::action("Paste", gpui_component::input::Paste),
+                MenuItem::separator(),
+                MenuItem::action("Select All", gpui_component::input::SelectAll),
+            ],
+            disabled: false,
+        },
+    ]
+}
+
 pub fn run() {
     let _runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -33,6 +66,20 @@ pub fn run() {
 
     app.run(move |cx| {
         gpui_component::init(cx);
+
+        cx.set_menus(build_mac_menus());
+        
+        cx.on_action(|_: &OpenGithub, cx: &mut App| {
+            cx.open_url("https://github.com/wandercn/hiposter");
+        });
+        
+        cx.on_action(|_: &Quit, cx: &mut App| {
+            cx.quit();
+        });
+        
+        cx.bind_keys([
+            KeyBinding::new("cmd-q", Quit, None),
+        ]);
 
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::centered(size(px(1400.), px(900.)), cx)),
@@ -50,3 +97,4 @@ pub fn run() {
         .detach();
     });
 }
+
