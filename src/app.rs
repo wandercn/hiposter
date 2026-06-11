@@ -312,7 +312,8 @@ impl Render for Hiposter {
                 TitleBar::new()
                     .child(div().flex_1())
                     .child(
-                        h_flex().px_3().child(
+                        h_flex().px_3().gap_2()
+                        .child(
                             Button::new("theme-dropdown").label(format!("Theme: {}", self.theme.name())).ghost().small().dropdown_caret(true)
                                 .dropdown_menu({
                                     let view = view.clone();
@@ -326,6 +327,19 @@ impl Render for Hiposter {
                                             }));
                                         }
                                         menu
+                                    }
+                                })
+                        )
+                        .child(
+                            Button::new("about-dropdown").label("About").ghost().small().dropdown_caret(true)
+                                .dropdown_menu({
+                                    move |menu, _, _| {
+                                        menu
+                                            .item(PopupMenuItem::new("Version: 0.1.0").disabled(true))
+                                            .item(PopupMenuItem::new("Author: wander").disabled(true))
+                                            .item(PopupMenuItem::new("Source Code").on_click(|_, _window, cx| {
+                                                cx.open_url("https://github.com/wandercn/hiposter");
+                                            }))
                                     }
                                 })
                         )
