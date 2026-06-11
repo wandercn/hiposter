@@ -44,3 +44,19 @@ codesign --force --deep --sign - "$APP_DIR"
 
 echo "Successfully built Universal App at $APP_DIR"
 lipo -info "$APP_DIR/Contents/MacOS/$BINARY_NAME"
+
+# Package into .dmg
+TEMP_DIR="target/release/dmg_temp"
+DMG_NAME="target/release/$APP_NAME.dmg"
+
+echo "Packaging Universal App into .dmg..."
+rm -rf "$TEMP_DIR"
+rm -f "$DMG_NAME"
+mkdir -p "$TEMP_DIR"
+
+cp -r "$APP_DIR" "$TEMP_DIR/"
+ln -s /Applications "$TEMP_DIR/Applications"
+
+hdiutil create -volname "$APP_NAME" -srcfolder "$TEMP_DIR" -ov -format UDZO "$DMG_NAME"
+
+echo "Successfully created final $DMG_NAME"
