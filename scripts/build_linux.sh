@@ -53,5 +53,12 @@ Type=Application
 Categories=Development;
 EOF
 
+# Fix permissions for Debian package requirements
+echo "Setting correct permissions for dpkg..."
+chmod 0755 "$BUILD_DIR/DEBIAN"
+chmod 0644 "$BUILD_DIR/DEBIAN/control"
+chmod 0755 "$BUILD_DIR/usr/bin/$APP_NAME"
+chmod -R 0755 "$BUILD_DIR/usr"
+
 echo "Created Linux build structure at $BUILD_DIR"
 echo "To create a .deb package, run: dpkg -b $BUILD_DIR ${APP_NAME}_${VERSION}_${ARCH}.deb"
