@@ -31,16 +31,20 @@ To build a Universal Binary (supports both Intel and Apple Silicon Macs) package
 
 The resulting `HiPoster.dmg` will be available in the `target/release/` directory.
 
-### Building for Linux / Windows
+### Building for Linux
 
-Scripts are provided for compiling the app on Linux and Windows platforms:
+A script is provided to compile and package the app for Linux (Debian/Ubuntu):
 
 ```bash
-# For Linux
 ./scripts/build_linux.sh
+```
 
-# For Windows
-./scripts/build_windows.sh
+### Building for Windows
+
+To build the application natively on Windows, open **PowerShell** and run the provided script. It will automatically install the necessary lightweight GNU compiler (`gcc` via Scoop) if you don't have Visual Studio Build Tools installed:
+
+```powershell
+.\scripts\build_windows.ps1
 ```
 
 ## About
