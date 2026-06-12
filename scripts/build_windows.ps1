@@ -18,12 +18,30 @@ Write-Host "Building $AppName for Windows using GNU Toolchain..." -ForegroundCol
 try {
     $gcc_version = gcc --version
 } catch {
-    Write-Host "Error: GCC (MinGW-w64) is not installed or not in PATH." -ForegroundColor Red
-    Write-Host "Because you are not using Visual Studio Build Tools, you MUST install MinGW-w64." -ForegroundColor Yellow
-    Write-Host "Easiest way via Scoop in PowerShell:" -ForegroundColor White
-    Write-Host "  1. iwr -useb get.scoop.sh | iex" -ForegroundColor White
-    Write-Host "  2. scoop install gcc" -ForegroundColor White
-    Write-Host "After installation, restart PowerShell and try again." -ForegroundColor Yellow
+    Write-Host "Warning: GCC (MinGW-w64) is not installed or not in PATH." -ForegroundColor Yellow
+    Write-Host "Because you are not using Visual Studio Build Tools, MinGW-w64 is required." -ForegroundColor Yellow
+    Write-Host "Attempting to install it automatically via Scoop..." -ForegroundColor Cyan
+
+    # Temporarily allow executing remote scripts for Scoop installation
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+
+    # Check if scoop is installed
+    if (!(Get-Command scoop -ErrorAction SilentlyContinue)) {
+        Write-Host "Installing Scoop..." -ForegroundColor Yellow
+        iwr -useb get.scoop.sh | iex
+    } else {
+        Write-Host "Scoop is already installed." -ForegroundColor Green
+    }
+
+    # Install gcc
+    Write-Host "Installing GCC via Scoop..." -ForegroundColor Yellow
+    scoop install gcc
+
+    Write-Host "=========================================================" -ForegroundColor Green
+    Write-Host "Installation complete!" -ForegroundColor Green
+    Write-Host "Please RESTART your PowerShell window to apply the new PATH," -ForegroundColor Yellow
+    Write-Host "and then run this script again: .\scripts\build_windows.ps1" -ForegroundColor Yellow
+    Write-Host "=========================================================" -ForegroundColor Green
     exit 1
 }
 
