@@ -38,7 +38,7 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Maintainer: Obity <support@obity.com>
+Maintainer: wander <wander@rustpub.com>
 Description: HiPoster GPUI version
  High performance API tester built with GPUI.
 EOF
