@@ -1,67 +1,48 @@
 <#
 .SYNOPSIS
-    Builds the HiPoster application natively on Windows using the GNU toolchain.
+    Builds the HiPoster application natively on Windows.
 .DESCRIPTION
-    This script compiles the project in release mode using the x86_64-pc-windows-gnu target
-    (avoiding the need for Visual Studio Build Tools) and packages the executable.
+    This script compiles the project in release mode using the default MSVC toolchain
+    required by the GPUI framework.
 #>
 
 $ErrorActionPreference = "Stop"
 
 $AppName = "HiPoster"
 $BinaryName = "hiposter-gpui.exe"
-$Target = "x86_64-pc-windows-gnu"
 
-Write-Host "Building $AppName for Windows using GNU Toolchain..." -ForegroundColor Cyan
+Write-Host "Building $AppName for Windows..." -ForegroundColor Cyan
 
-# 1. Check for GCC (MinGW-w64)
-try {
-    $gcc_version = gcc --version
-} catch {
-    Write-Host "Warning: GCC (MinGW-w64) is not installed or not in PATH." -ForegroundColor Yellow
-    Write-Host "Because you are not using Visual Studio Build Tools, MinGW-w64 is required." -ForegroundColor Yellow
-    Write-Host "Attempting to install it automatically via Scoop..." -ForegroundColor Cyan
-
-    # Temporarily allow executing remote scripts for Scoop installation
-    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-
-    # Check if scoop is installed
-    if (!(Get-Command scoop -ErrorAction SilentlyContinue)) {
-        Write-Host "Installing Scoop..." -ForegroundColor Yellow
-        iwr -useb get.scoop.sh | iex
-    } else {
-        Write-Host "Scoop is already installed." -ForegroundColor Green
-    }
-
-    # Install gcc
-    Write-Host "Installing GCC via Scoop..." -ForegroundColor Yellow
-    scoop install gcc
-
-    Write-Host "=========================================================" -ForegroundColor Green
-    Write-Host "Installation complete!" -ForegroundColor Green
-    Write-Host "Please RESTART your PowerShell window to apply the new PATH," -ForegroundColor Yellow
-    Write-Host "and then run this script again: .\scripts\build_windows.ps1" -ForegroundColor Yellow
-    Write-Host "=========================================================" -ForegroundColor Green
-    exit 1
+# Check if MSVC is available (simple check via cl.exe)
+if (!(Get-Command cl.exe -ErrorAction SilentlyContinue)) {
+    Write-Host "WARNING: 'cl.exe' (MSVC Compiler) not found in PATH." -ForegroundColor Yellow
+    Write-Host "The GPUI framework strictly requires Microsoft Visual C++ Build Tools." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Please ensure you have installed:" -ForegroundColor White
+    Write-Host "1. Build Tools for Visual Studio 2022" -ForegroundColor White
+    Write-Host "2. Workload: 'Desktop development with C++'" -ForegroundColor White
+    Write-Host "3. Component: Windows 10/11 SDK" -ForegroundColor White
+    Write-Host ""
+    Write-Host "If installed, please run this script from the 'Developer PowerShell for VS 2022'." -ForegroundColor Cyan
 }
 
-# 2. Ensure Rust GNU toolchain is installed
-$Toolchain = "stable-x86_64-pc-windows-gnu"
-Write-Host "Checking Rust GNU toolchain ($Toolchain)..." -ForegroundColor Cyan
-rustup toolchain install $Toolchain
+# 1. Ensure Rust MSVC toolchain is installed
+Write-Host "Checking Rust MSVC toolchain..." -ForegroundColor Cyan
+rustup toolchain install stable-x86_64-pc-windows-msvc
+rustup default stable-x86_64-pc-windows-msvc
 
-# 3. Build the project using Cargo with the GNU toolchain
-Write-Host "Compiling project with GNU toolchain..." -ForegroundColor Yellow
-cargo +$Toolchain build --release
+# 2. Build the project
+Write-Host "Compiling project..." -ForegroundColor Yellow
+cargo build --release
 
-# 4. Prepare the output package directory
+# 3. Prepare the output package directory
 $BuildDir = "target\windows_release"
 if (Test-Path -Path $BuildDir) {
     Remove-Item -Path $BuildDir -Recurse -Force
 }
 New-Item -Path $BuildDir -ItemType Directory | Out-Null
 
-# 5. Copy the compiled executable to the output directory
+# 4. Copy the compiled executable to the output directory
 $SourceExe = "target\release\$BinaryName"
 if (Test-Path -Path $SourceExe) {
     Copy-Item -Path $SourceExe -Destination $BuildDir\
