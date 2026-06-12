@@ -41,7 +41,13 @@ A script is provided to compile and package the app for Linux (Debian/Ubuntu):
 
 ### Building for Windows
 
-To build the application natively on Windows, open **PowerShell** and run the provided script. It will automatically install the necessary lightweight GNU compiler (`gcc` via Scoop) if you don't have Visual Studio Build Tools installed:
+Due to the GPUI framework's strict reliance on native Windows APIs, DirectX 12, and the MSVC toolchain, **cross-compiling for Windows from Linux or macOS is not supported.**
+
+To build the application, you must use a native Windows environment (or a Windows VM/CI). 
+
+1. Install [Build Tools for Visual Studio 2022](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+2. Select the **"Desktop development with C++"** workload (ensure Windows 10/11 SDK is included).
+3. Open **"Developer PowerShell for VS 2022"** (do not use regular PowerShell) and run:
 
 ```powershell
 .\scripts\build_windows.ps1
