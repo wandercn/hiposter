@@ -32,7 +32,13 @@ impl Render for AboutWindow {
                 div()
                     .w_20()
                     .h_20()
-                    .child(gpui::img("icons/logo.png"))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        gpui::img("icons/logo.png")
+                            .size_full()
+                    )
             )
             .child(
                 v_flex()
