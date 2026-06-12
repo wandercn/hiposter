@@ -30,8 +30,8 @@ impl Render for AboutWindow {
             .gap_4()
             .child(
                 div()
-                    .w_32()
-                    .h_32()
+                    .w_20()
+                    .h_20()
                     .child(gpui::img("icons/logo.png"))
             )
             .child(
