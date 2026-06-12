@@ -45,17 +45,14 @@ try {
     exit 1
 }
 
-# 2. Ensure Rust GNU target is installed
-Write-Host "Checking Rust GNU target..." -ForegroundColor Cyan
-$installed_targets = rustup target list | Select-String "(installed)"
-if (!($installed_targets -match $Target)) {
-    Write-Host "Installing Rust target $Target..." -ForegroundColor Yellow
-    rustup target add $Target
-}
+# 2. Ensure Rust GNU toolchain is installed
+$Toolchain = "stable-x86_64-pc-windows-gnu"
+Write-Host "Checking Rust GNU toolchain ($Toolchain)..." -ForegroundColor Cyan
+rustup toolchain install $Toolchain
 
-# 3. Build the project using Cargo with the GNU target
-Write-Host "Compiling project..." -ForegroundColor Yellow
-cargo build --release --target $Target
+# 3. Build the project using Cargo with the GNU toolchain
+Write-Host "Compiling project with GNU toolchain..." -ForegroundColor Yellow
+cargo +$Toolchain build --release
 
 # 4. Prepare the output package directory
 $BuildDir = "target\windows_release"
@@ -65,7 +62,7 @@ if (Test-Path -Path $BuildDir) {
 New-Item -Path $BuildDir -ItemType Directory | Out-Null
 
 # 5. Copy the compiled executable to the output directory
-$SourceExe = "target\$Target\release\$BinaryName"
+$SourceExe = "target\release\$BinaryName"
 if (Test-Path -Path $SourceExe) {
     Copy-Item -Path $SourceExe -Destination $BuildDir\
     Write-Host "Successfully built Windows binary at $BuildDir\$BinaryName" -ForegroundColor Green
