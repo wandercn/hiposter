@@ -119,46 +119,72 @@ impl Hiposter {
     pub fn set_theme(&mut self, theme: AppTheme, window: &mut Window, cx: &mut Context<Self>) {
         self.theme = theme;
         let colors = theme.colors();
+        let is_dark = theme.is_dark();
+        let mode_str = if is_dark { "dark" } else { "light" };
+        let gpui_theme_mode = if is_dark { gpui_component::theme::ThemeMode::Dark } else { gpui_component::theme::ThemeMode::Light };
 
         cx.update_global::<gpui_component::theme::Theme, _>(|global_theme, cx| {
+            let syntax_colors = if is_dark {
+                serde_json::json!({
+                    "property" : { "color" : "#C678DD" },
+                    "label" : { "color" : "#C678DD" },
+                    "tag" : { "color" : "#E06C75" },
+                    "variable" : { "color" : "#E5C07B" },
+                    "attribute" : { "color" : "#D19A66" },
+                    "variable.other.member" : { "color" : "#E5C07B" },
+                    "string" : { "color" : "#98C379" },
+                    "number" : { "color" : "#D19A66" },
+                    "boolean" : { "color" : "#E06C75" },
+                    "constant" : { "color" : "#5C6370", "font_style" : "italic" },
+                    "null" : { "color" : "#5C6370", "font_style" : "italic" },
+                    "keyword" : { "color" : "#C678DD" },
+                    "operator" : { "color" : "#ABB2BF" },
+                    "punctuation" : { "color" : "#ABB2BF" },
+                    "punctuation.bracket" : { "color" : "#ABB2BF" },
+                    "punctuation.delimiter" : { "color" : "#ABB2BF" }
+                })
+            } else {
+                serde_json::json!({
+                    "property" : { "color" : "#8250DF" },
+                    "label" : { "color" : "#8250DF" },
+                    "tag" : { "color" : "#8250DF" },
+                    "variable" : { "color" : "#8250DF" },
+                    "attribute" : { "color" : "#8250DF" },
+                    "variable.other.member" : { "color" : "#8250DF" },
+                    "string" : { "color" : "#0A7D28" },
+                    "number" : { "color" : "#0550AE" },
+                    "boolean" : { "color" : "#CF222E" },
+                    "constant" : { "color" : "#6A737D", "font_style" : "italic" },
+                    "null" : { "color" : "#6A737D", "font_style" : "italic" },
+                    "keyword" : { "color" : "#CF222E" },
+                    "operator" : { "color" : "#999999" },
+                    "punctuation" : { "color" : "#999999" },
+                    "punctuation.bracket" : { "color" : "#999999" },
+                    "punctuation.delimiter" : { "color" : "#999999" }
+                })
+            };
+
             let config = serde_json::json!({
                 "name" : theme.name(),
-                "mode" : "light",
+                "mode" : mode_str,
                 "colors" : {
                     "background" : hsla_to_hex(colors.bg),
                     "foreground" : hsla_to_hex(colors.text),
                     "primary" : hsla_to_hex(colors.blue),
-                    "primary.foreground" : "#ffffff",
+                    "primary.foreground" : if is_dark { "#000000" } else { "#ffffff" },
                     "border" : hsla_to_hex(colors.border),
                     "accent.background" : format!("{}1a", hsla_to_hex(colors.blue))
                 },
                 "highlight" : {
                     "editor.background" : hsla_to_hex(colors.bg),
                     "editor.foreground" : hsla_to_hex(colors.text),
-                    "syntax" : {
-                        "property" : { "color" : "#8250DF" },
-                        "label" : { "color" : "#8250DF" },
-                        "tag" : { "color" : "#8250DF" },
-                        "variable" : { "color" : "#8250DF" },
-                        "attribute" : { "color" : "#8250DF" },
-                        "variable.other.member" : { "color" : "#8250DF" },
-                        "string" : { "color" : "#0A7D28" },
-                        "number" : { "color" : "#0550AE" },
-                        "boolean" : { "color" : "#CF222E" },
-                        "constant" : { "color" : "#6A737D", "font_style" : "italic" },
-                        "null" : { "color" : "#6A737D", "font_style" : "italic" },
-                        "keyword" : { "color" : "#CF222E" },
-                        "operator" : { "color" : "#999999" },
-                        "punctuation" : { "color" : "#999999" },
-                        "punctuation.bracket" : { "color" : "#999999" },
-                        "punctuation.delimiter" : { "color" : "#999999" }
-                    }
+                    "syntax" : syntax_colors
                 }
             });
 
             if let Ok(config) = serde_json::from_value::<gpui_component::theme::ThemeConfig>(config) {
                 global_theme.apply_config(&std::rc::Rc::new(config));
-                gpui_component::theme::Theme::change(gpui_component::theme::ThemeMode::Light, None, cx);
+                gpui_component::theme::Theme::change(gpui_theme_mode, None, cx);
             }
         });
 
@@ -321,7 +347,8 @@ impl Render for Hiposter {
                                         let themes = [
                                             AppTheme::GitHubLight, AppTheme::SolarizedLight, AppTheme::OneLight, 
                                             AppTheme::VitesseLight, AppTheme::CatppuccinLatte,
-                                            AppTheme::NordLight, AppTheme::GruvboxLight, AppTheme::AyuLight
+                                            AppTheme::NordLight, AppTheme::GruvboxLight, AppTheme::AyuLight,
+                                            AppTheme::OceanicNext, AppTheme::Monokai
                                         ];
                                         let mut menu = menu;
                                         for t in themes {

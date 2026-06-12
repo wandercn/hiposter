@@ -11,6 +11,8 @@ pub enum AppTheme {
     NordLight,
     GruvboxLight,
     AyuLight,
+    OceanicNext,
+    Monokai,
 }
 
 #[derive(Clone, Copy)]
@@ -28,6 +30,13 @@ pub struct ThemeColors {
 }
 
 impl AppTheme {
+    pub fn is_dark(&self) -> bool {
+        match self {
+            AppTheme::OceanicNext | AppTheme::Monokai => true,
+            _ => false,
+        }
+    }
+
     pub fn colors(&self) -> ThemeColors {
         match self {
             AppTheme::GitHubLight => ThemeColors {
@@ -126,6 +135,30 @@ impl AppTheme {
                 yellow: Hsla::from(rgb(0xfa8d3e)),
                 red: Hsla::from(rgb(0xf07178)),
             },
+            AppTheme::OceanicNext => ThemeColors {
+                bg: Hsla::from(rgb(0x1b2b34)),
+                sidebar: Hsla::from(rgb(0x18262e)),
+                surface: Hsla::from(rgb(0x343d46)),
+                border: Hsla::from(rgb(0x4f5b66)),
+                text: Hsla::from(rgb(0xd8dee9)),
+                subtext: Hsla::from(rgb(0xa6accd)),
+                blue: Hsla::from(rgb(0x6699cc)),
+                green: Hsla::from(rgb(0x99c794)),
+                yellow: Hsla::from(rgb(0xfac863)),
+                red: Hsla::from(rgb(0xec5f67)),
+            },
+            AppTheme::Monokai => ThemeColors {
+                bg: Hsla::from(rgb(0x272822)),
+                sidebar: Hsla::from(rgb(0x1e1f1c)),
+                surface: Hsla::from(rgb(0x3e3d32)),
+                border: Hsla::from(rgb(0x49483e)),
+                text: Hsla::from(rgb(0xf8f8f2)),
+                subtext: Hsla::from(rgb(0x75715e)),
+                blue: Hsla::from(rgb(0x66d9ef)),
+                green: Hsla::from(rgb(0xa6e22e)),
+                yellow: Hsla::from(rgb(0xe6db74)),
+                red: Hsla::from(rgb(0xf92672)),
+            },
         }
     }
     
@@ -139,6 +172,8 @@ impl AppTheme {
             AppTheme::NordLight => "Nord Light",
             AppTheme::GruvboxLight => "Gruvbox Light",
             AppTheme::AyuLight => "Ayu Light",
+            AppTheme::OceanicNext => "Oceanic Next",
+            AppTheme::Monokai => "Monokai",
         }
     }
 }
