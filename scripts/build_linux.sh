@@ -12,10 +12,10 @@ VERSION="0.1.0"
 # E.g., `TARGET_ARCH=amd64 ./scripts/build_linux.sh`
 if [ -z "$TARGET_ARCH" ]; then
     MACHINE=$(uname -m)
-    if [ "$MACHINE" == "x86_64" ]; then
+    if [ "$MACHINE" = "x86_64" ]; then
         TARGET_ARCH="amd64"
         RUST_TARGET="x86_64-unknown-linux-gnu"
-    elif [ "$MACHINE" == "aarch64" ] || [ "$MACHINE" == "arm64" ]; then
+    elif [ "$MACHINE" = "aarch64" ] || [ "$MACHINE" = "arm64" ]; then
         TARGET_ARCH="arm64"
         RUST_TARGET="aarch64-unknown-linux-gnu"
     else
@@ -23,9 +23,9 @@ if [ -z "$TARGET_ARCH" ]; then
         exit 1
     fi
 else
-    if [ "$TARGET_ARCH" == "amd64" ]; then
+    if [ "$TARGET_ARCH" = "amd64" ]; then
         RUST_TARGET="x86_64-unknown-linux-gnu"
-    elif [ "$TARGET_ARCH" == "arm64" ]; then
+    elif [ "$TARGET_ARCH" = "arm64" ]; then
         RUST_TARGET="aarch64-unknown-linux-gnu"
     else
         echo "Unsupported TARGET_ARCH: $TARGET_ARCH"
@@ -39,7 +39,7 @@ echo "Building $APP_NAME for Linux ($TARGET_ARCH)..."
 rustup target add "$RUST_TARGET"
 
 # Check if we are cross-compiling from macOS to Linux
-if [ "$(uname)" == "Darwin" ]; then
+if [ "$(uname)" = "Darwin" ]; then
     echo "Detected macOS. Cross-compiling for Linux requires cargo-zigbuild."
     if ! command -v cargo-zigbuild &> /dev/null; then
         echo "Error: cargo-zigbuild not found."
