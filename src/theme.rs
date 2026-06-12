@@ -8,6 +8,9 @@ pub enum AppTheme {
     OneLight,
     VitesseLight,
     CatppuccinLatte,
+    NordLight,
+    GruvboxLight,
+    AyuLight,
 }
 
 #[derive(Clone, Copy)]
@@ -87,6 +90,42 @@ impl AppTheme {
                 yellow: Hsla::from(rgb(0xdf8e1d)),
                 red: Hsla::from(rgb(0xd20f39)),
             },
+            AppTheme::NordLight => ThemeColors {
+                bg: Hsla::from(rgb(0xe5e9f0)),
+                sidebar: Hsla::from(rgb(0xd8dee9)),
+                surface: Hsla::from(rgb(0xeceff4)),
+                border: Hsla::from(rgb(0xc0c8d4)),
+                text: Hsla::from(rgb(0x2e3440)),
+                subtext: Hsla::from(rgb(0x4c566a)),
+                blue: Hsla::from(rgb(0x5e81ac)),
+                green: Hsla::from(rgb(0xa3be8c)),
+                yellow: Hsla::from(rgb(0xebcb8b)),
+                red: Hsla::from(rgb(0xbf616a)),
+            },
+            AppTheme::GruvboxLight => ThemeColors {
+                bg: Hsla::from(rgb(0xfbf1c7)),
+                sidebar: Hsla::from(rgb(0xebdbb2)),
+                surface: Hsla::from(rgb(0xf2e5bc)),
+                border: Hsla::from(rgb(0xd5c4a1)),
+                text: Hsla::from(rgb(0x3c3836)),
+                subtext: Hsla::from(rgb(0x7c6f64)),
+                blue: Hsla::from(rgb(0x458588)),
+                green: Hsla::from(rgb(0x98971a)),
+                yellow: Hsla::from(rgb(0xd79921)),
+                red: Hsla::from(rgb(0xcc241d)),
+            },
+            AppTheme::AyuLight => ThemeColors {
+                bg: Hsla::from(rgb(0xfafafa)),
+                sidebar: Hsla::from(rgb(0xf3f4f5)),
+                surface: Hsla::from(rgb(0xf8f9fa)),
+                border: Hsla::from(rgb(0xe6e6e6)),
+                text: Hsla::from(rgb(0x5c6166)),
+                subtext: Hsla::from(rgb(0x8a9199)),
+                blue: Hsla::from(rgb(0x399ee6)),
+                green: Hsla::from(rgb(0x86b300)),
+                yellow: Hsla::from(rgb(0xfa8d3e)),
+                red: Hsla::from(rgb(0xf07178)),
+            },
         }
     }
     
@@ -97,6 +136,9 @@ impl AppTheme {
             AppTheme::OneLight => "One Light",
             AppTheme::VitesseLight => "Vitesse Light",
             AppTheme::CatppuccinLatte => "Catppuccin Latte",
+            AppTheme::NordLight => "Nord Light",
+            AppTheme::GruvboxLight => "Gruvbox Light",
+            AppTheme::AyuLight => "Ayu Light",
         }
     }
 }

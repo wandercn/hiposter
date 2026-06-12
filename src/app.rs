@@ -318,7 +318,11 @@ impl Render for Hiposter {
                                 .dropdown_menu({
                                     let view = view.clone();
                                     move |menu, _, _| {
-                                        let themes = [AppTheme::GitHubLight, AppTheme::SolarizedLight, AppTheme::OneLight, AppTheme::VitesseLight, AppTheme::CatppuccinLatte];
+                                        let themes = [
+                                            AppTheme::GitHubLight, AppTheme::SolarizedLight, AppTheme::OneLight, 
+                                            AppTheme::VitesseLight, AppTheme::CatppuccinLatte,
+                                            AppTheme::NordLight, AppTheme::GruvboxLight, AppTheme::AyuLight
+                                        ];
                                         let mut menu = menu;
                                         for t in themes {
                                             let view = view.clone();
