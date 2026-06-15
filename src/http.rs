@@ -1,5 +1,5 @@
 use crate::model::{Header, HttpMethod, HttpRequest, HttpResponse, AuthType};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use reqwest::{Client, Method};
 use std::time::Duration;
 
@@ -86,7 +86,21 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
     }
 
     let start = std::time::Instant::now();
-    let response = builder.send().await.context("Failed to send request")?;
+    let response = match builder.send().await {
+        Ok(resp) => resp,
+        Err(e) => {
+            let msg = if e.is_timeout() {
+                "Request timeout".to_string()
+            } else if e.is_connect() {
+                "Connection failed (host unreachable or refused)".to_string()
+            } else if e.is_request() {
+                format!("Request error: {}", e)
+            } else {
+                format!("Network error: {}", e)
+            };
+            return Err(anyhow::anyhow!(msg));
+        }
+    };
     let elapsed_ms = start.elapsed().as_millis();
 
     let status = response.status();
@@ -101,7 +115,10 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
         });
     }
 
-    let bytes = response.bytes().await.context("Failed to read response body")?;
+    let bytes = match response.bytes().await {
+        Ok(b) => b,
+        Err(e) => return Err(anyhow::anyhow!("Failed to read response body: {}", e)),
+    };
     let size = bytes.len();
     let body = String::from_utf8_lossy(&bytes).to_string();
 
