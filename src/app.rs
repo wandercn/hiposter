@@ -15,6 +15,8 @@ use crate::assets::{CustomIconName};
 use crate::api_tab::ApiTab;
 use crate::http;
 use std::fs;
+use std::path::PathBuf;
+use directories::ProjectDirs;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct HistoryItem {
@@ -31,6 +33,28 @@ pub struct Hiposter {
 }
 
 impl Hiposter {
+    fn config_dir() -> Option<PathBuf> {
+        ProjectDirs::from("com", "obity", "hiposter").map(|dirs| dirs.config_dir().to_path_buf())
+    }
+
+    fn ensure_config_dir() -> Option<PathBuf> {
+        let dir = Self::config_dir()?;
+        if !dir.exists() {
+            let _ = fs::create_dir_all(&dir);
+            // Simple migration: if old files exist in root, move them
+            for file in ["history.json", "theme_config.json"] {
+                if let Ok(old_path) = std::env::current_dir().map(|d| d.join(file)) {
+                    if old_path.exists() {
+                        let mut new_path = dir.clone();
+                        new_path.push(file);
+                        let _ = fs::rename(old_path, new_path);
+                    }
+                }
+            }
+        }
+        Some(dir)
+    }
+
     pub fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
         let mut this = Self {
             tabs: Vec::new(),
@@ -102,16 +126,22 @@ impl Hiposter {
     }
 
     pub fn load_theme(&mut self) {
-        if let Ok(data) = fs::read_to_string("theme_config.json") {
-            if let Ok(theme) = serde_json::from_str(&data) {
-                self.theme = theme;
+        if let Some(mut path) = Self::ensure_config_dir() {
+            path.push("theme_config.json");
+            if let Ok(data) = fs::read_to_string(path) {
+                if let Ok(theme) = serde_json::from_str(&data) {
+                    self.theme = theme;
+                }
             }
         }
     }
 
     pub fn save_theme(&self) {
-        if let Ok(data) = serde_json::to_string(&self.theme) {
-            let _ = fs::write("theme_config.json", data);
+        if let Some(mut path) = Self::ensure_config_dir() {
+            path.push("theme_config.json");
+            if let Ok(data) = serde_json::to_string(&self.theme) {
+                let _ = fs::write(path, data);
+            }
         }
     }
 
@@ -216,16 +246,22 @@ impl Hiposter {
     }
 
     pub fn load_history(&mut self) {
-        if let Ok(data) = fs::read_to_string("history.json") {
-            if let Ok(history) = serde_json::from_str(&data) {
-                self.history = history;
+        if let Some(mut path) = Self::ensure_config_dir() {
+            path.push("history.json");
+            if let Ok(data) = fs::read_to_string(path) {
+                if let Ok(history) = serde_json::from_str(&data) {
+                    self.history = history;
+                }
             }
         }
     }
 
     pub fn save_history(&self) {
-        if let Ok(data) = serde_json::to_string(&self.history) {
-            let _ = fs::write("history.json", data);
+        if let Some(mut path) = Self::ensure_config_dir() {
+            path.push("history.json");
+            if let Ok(data) = serde_json::to_string(&self.history) {
+                let _ = fs::write(path, data);
+            }
         }
     }
 
