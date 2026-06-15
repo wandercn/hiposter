@@ -1,0 +1,263 @@
+<!DOCTYPE HTML>
+<html lang="zh-cn" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>第六章：异步并发：在 UI 应用中处理网络请求 - GPUI 实战进阶：从零到一构建高性能桌面应用</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">GPUI 实战进阶：从零到一构建高性能桌面应用</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/obity/hiposter-gpui" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/obity/hiposter-gpui/edit/master/book/src/src/CHAPTER6_ASYNC.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="第六章异步并发在-ui-应用中处理网络请求"><a class="header" href="#第六章异步并发在-ui-应用中处理网络请求">第六章：异步并发：在 UI 应用中处理网络请求</a></h1>
+<p>桌面应用最忌讳的就是“无响应”。网络请求作为不确定性最高的 IO 操作，是导致 UI 假死的头号元凶。在 <code>HiPoster</code> 中，我们利用 GPUI 的异步模型实现了流畅的请求体验。</p>
+<h2 id="61-ui-线程与后台线程"><a class="header" href="#61-ui-线程与后台线程">6.1 UI 线程与后台线程</a></h2>
+<p>GPUI 的主线程（Main Thread）负责：绘制、输入事件、窗口管理。
+<strong>金律</strong>: 永远不要在主线程执行阻塞操作（如同步 HTTP、密集计算）。</p>
+<h2 id="62-cxspawn开启异步世界"><a class="header" href="#62-cxspawn开启异步世界">6.2 cx.spawn：开启异步世界</a></h2>
+<p>GPUI 深度集成了 <code>tokio</code>。通过 <code>cx.spawn</code>，你可以轻松开启一个后台异步任务。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// src/app.rs
+cx.spawn(move |_this, mut cx| {
+    async move {
+        // 1. 执行异步 IO (不阻塞 UI)
+        let result = http::execute_request(&amp;req).await;
+        
+        // 2. 更新 UI (必须切回 UI 线程)
+        tab.update(&amp;mut cx, |tab, cx| {
+            tab.loading = false;
+            tab.set_response(result, cx);
+        });
+    }
+}).detach(); // detach 让任务在后台独立运行
+<span class="boring">}</span></code></pre></pre>
+<h2 id="63-异步环境下的安全weakentity"><a class="header" href="#63-异步环境下的安全weakentity">6.3 异步环境下的安全：WeakEntity</a></h2>
+<p>在异步回调发生时，原有的视图可能已经被用户关闭（销毁）了。直接操作已销毁的 Entity 会导致程序崩溃。</p>
+<p><strong>对策</strong>: 使用 <code>WeakEntity</code>。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>cx.spawn(|this, mut cx| {
+    async move {
+        let data = fetch_data().await;
+        // 尝试升级为强引用，如果视图已消失，则自动忽略
+        if let Some(this) = this.upgrade() {
+            this.update(&amp;mut cx, |this, cx| { ... });
+        }
+    }
+})
+<span class="boring">}</span></code></pre></pre>
+<h2 id="64-请求进度与取消"><a class="header" href="#64-请求进度与取消">6.4 请求进度与取消</a></h2>
+<p>在 <code>HiPoster</code> 中，我们将 <code>loading</code> 状态存入 <code>ApiTab</code>。</p>
+<ul>
+<li>请求开始：<code>loading = true</code> -&gt; <code>cx.notify()</code> -&gt; 界面显示加载动画。</li>
+<li>请求结束：<code>loading = false</code> -&gt; <code>cx.notify()</code> -&gt; 加载动画消失。</li>
+</ul>
+<h2 id="65-异步心法"><a class="header" href="#65-异步心法">6.5 异步心法</a></h2>
+<ol>
+<li><strong>最小化临界区</strong>: 只有真正修改 UI 数据时才进入 <code>entity.update</code>。</li>
+<li><strong>错误捕获</strong>: 在异步块内部使用 <code>match result</code> 捕获异常，并转换为 UI 可读的错误消息反馈给用户。</li>
+<li><strong>防抖与节流</strong>: 对于输入触发的搜索等请求，利用异步原语进行防抖，避免无效的网络开销。</li>
+</ol>
+<p>网络请求搞定了，下一步我们要考虑如何优化大批量数据的渲染性能，请看第七章。</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="CHAPTER5_ACTION_SYSTEM.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="CHAPTER7_PERFORMANCE.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="CHAPTER5_ACTION_SYSTEM.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="CHAPTER7_PERFORMANCE.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
