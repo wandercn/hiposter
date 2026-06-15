@@ -479,7 +479,12 @@ impl ApiTab {
                     } else { div() })
             )
             .child(v_flex().flex_1().child(
-                if let Some(resp) = &self.response {
+                if self.loading {
+                    v_flex().size_full().items_center().justify_center().gap_4()
+                        .child(Icon::new(IconName::Loader).size_12().text_color(colors.blue))
+                        .child(Label::new("Sending request...").text_color(colors.subtext))
+                        .into_any_element()
+                } else if let Some(resp) = &self.response {
                     match self.active_response_tab {
                         ResponseTab::Body => v_flex().size_full().child(h_flex().px_4().py_1().gap_2()
                             .child(Button::new("pretty").label("Pretty").small().ghost().when(self.active_response_view == ResponseView::Pretty, |s| s.bg(colors.surface).text_color(colors.blue)).on_click(cx.listener(|this, _, _, cx| { this.set_response_view(ResponseView::Pretty, cx); })))
