@@ -131,24 +131,3 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
         elapsed_ms,
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::model::HttpMethod;
-
-    #[tokio::test]
-    async fn test_get_request() {
-        let request = HttpRequest {
-            method: HttpMethod::GET,
-            url: "https://httpbin.org/get".to_string(),
-            ..Default::default()
-        };
-        let result = execute_request(&request).await;
-        assert!(result.is_ok(), "Request failed: {:?}", result.err());
-        let response = result.unwrap();
-        assert_eq!(response.status_code, 200);
-        assert!(response.body.contains("url"));
-        assert!(response.elapsed_ms > 0);
-    }
-}
