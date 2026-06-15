@@ -53,6 +53,36 @@ To build the application, you must use a native Windows environment (or a Window
 .\scripts\build_windows.ps1
 ```
 
+## 📖 Development Guide
+
+We have prepared a comprehensive development guide for developers interested in learning how to build high-performance desktop applications with **GPUI**.
+
+The book covers:
+- GPUI's Entity-View-Model architecture.
+- High-performance rendering with the **Dirty Flag** pattern.
+- Asynchronous task management and UI safety.
+- Standardized cross-platform data persistence.
+
+### How to view the book
+
+The book is built using [mdBook](https://github.com/rust-lang/mdBook).
+
+1. **Install mdBook**:
+   ```bash
+   cargo install mdbook
+   ```
+
+2. **Serve the book locally**:
+   ```bash
+   mdbook serve book --open
+   ```
+
+3. **Build the static HTML**:
+   ```bash
+   mdbook build book
+   ```
+   The output will be in `book/book/`.
+
 ## About
 
 - **Version**: 0.1.0
