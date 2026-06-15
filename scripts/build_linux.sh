@@ -6,7 +6,8 @@
 set -e
 
 APP_NAME="hiposter"
-VERSION="0.1.0"
+DISPLAY_NAME="HiPoster"
+VERSION=$(grep '^version =' Cargo.toml | cut -d '"' -f 2)
 
 # Determine target architecture. Default is current machine, but can be overridden.
 # E.g., `TARGET_ARCH=amd64 ./scripts/build_linux.sh`
@@ -33,7 +34,7 @@ else
     fi
 fi
 
-echo "Building $APP_NAME for Linux ($TARGET_ARCH)..."
+echo "Building $DISPLAY_NAME ($APP_NAME) version $VERSION for Linux ($TARGET_ARCH)..."
 
 # Ensure target is installed
 rustup target add "$RUST_TARGET"
@@ -76,14 +77,14 @@ Section: utils
 Priority: optional
 Architecture: $TARGET_ARCH
 Maintainer: wander <wander@rustpub.com>
-Description: HiPoster GPUI version
+Description: $DISPLAY_NAME API Tester
  High performance API tester built with GPUI.
 EOF
 
 # Create desktop file
 cat <<EOF > "$BUILD_DIR/usr/share/applications/$APP_NAME.desktop"
 [Desktop Entry]
-Name=HiPoster
+Name=$DISPLAY_NAME
 Exec=/usr/bin/$APP_NAME
 Icon=/usr/share/icons/$APP_NAME.png
 Type=Application

@@ -4,10 +4,11 @@
 set -e
 
 APP_NAME="HiPoster"
+VERSION=$(grep '^version =' Cargo.toml | cut -d '"' -f 2)
 BINARY_NAME="hiposter-gpui.exe"
 TARGET="x86_64-pc-windows-gnu"
 
-echo "Building $APP_NAME for Windows ($TARGET)..."
+echo "Building $APP_NAME version $VERSION for Windows ($TARGET)..."
 
 # 1. Check if the Rust target is installed
 if ! rustup target list | grep -q "${TARGET} (installed)"; then

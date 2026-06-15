@@ -5,10 +5,10 @@ set -e
 
 APP_NAME="HiPoster"
 BINARY_NAME="hiposter-gpui"
-BUNDLE_ID="com.obity.hiposter-gpui"
-VERSION="0.1.0"
+BUNDLE_ID="com.obity.hiposter"
+VERSION=$(grep '^version =' Cargo.toml | cut -d '"' -f 2)
 
-echo "Building Universal Binary for $APP_NAME..."
+echo "Building Universal Binary for $APP_NAME version $VERSION..."
 
 # Ensure targets are present
 rustup target add x86_64-apple-darwin aarch64-apple-darwin

@@ -9,9 +9,10 @@
 $ErrorActionPreference = "Stop"
 
 $AppName = "HiPoster"
+$Version = (Select-String -Path "Cargo.toml" -Pattern '^version = "(.*)"').Matches.Groups[1].Value
 $BinaryName = "hiposter-gpui.exe"
 
-Write-Host "Building $AppName for Windows..." -ForegroundColor Cyan
+Write-Host "Building $AppName version $Version for Windows..." -ForegroundColor Cyan
 
 # Check if MSVC is available (simple check via cl.exe)
 if (!(Get-Command cl.exe -ErrorAction SilentlyContinue)) {
