@@ -86,17 +86,16 @@ impl Hiposter {
                     tab.loading = false;
                     match result {
                         Ok(resp) => {
-                            tab.response = Some(resp);
+                            tab.set_response(resp, cx);
                         }
                         Err(e) => {
-                            tab.response = Some(model::HttpResponse {
+                            tab.set_response(model::HttpResponse {
                                 status_code: 0,
                                 status_text: format!("Error: {}", e),
                                 ..Default::default()
-                            });
+                            }, cx);
                         }
                     }
-                    cx.notify();
                 });
             }
         }).detach();
@@ -274,7 +273,7 @@ impl Hiposter {
                             _ => colors.text,
                         }).w_12())
                 )
-                .child(Label::new(item.request.url.clone()).text_color(colors.text).ml_2().flex_1())
+                .child(Label::new(item.request.url.as_str()).text_color(colors.text).ml_2().flex_1())
                 .child(
                     div().invisible().group_hover("history-item", |s| s.visible())
                         .child(Button::new(format!("del-hist-{}", i)).icon(IconName::Close).ghost().on_click(cx.listener(move |this, _, _, cx| {

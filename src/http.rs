@@ -3,12 +3,22 @@ use anyhow::{Context, Result};
 use reqwest::{Client, Method};
 use std::time::Duration;
 
+use std::sync::OnceLock;
+
+static CLIENT: OnceLock<Client> = OnceLock::new();
+
+fn get_client() -> &'static Client {
+    CLIENT.get_or_init(|| {
+        Client::builder()
+            .timeout(Duration::from_secs(30))
+            .danger_accept_invalid_certs(true)
+            .build()
+            .expect("Failed to build HTTP client")
+    })
+}
+
 pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
-    let client = Client::builder()
-        .timeout(Duration::from_secs(30))
-        .danger_accept_invalid_certs(true)
-        .build()
-        .context("Failed to build HTTP client")?;
+    let client = get_client();
 
     let method = match request.method {
         HttpMethod::GET => Method::GET,

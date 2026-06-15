@@ -54,6 +54,7 @@ pub struct ApiTab {
     pub urlencoded: Vec<KeyValueRow>,
     pub request: model::HttpRequest,
     pub response: Option<model::HttpResponse>,
+    pub dirty_response: bool,
     pub loading: bool,
     pub active_tab: RequestTab,
     pub active_response_tab: ResponseTab,
@@ -154,6 +155,7 @@ impl ApiTab {
             urlencoded,
             request,
             response: None,
+            dirty_response: false,
             loading: false,
             active_tab: RequestTab::Params,
             active_response_tab: ResponseTab::Body,
@@ -249,6 +251,37 @@ impl ApiTab {
 
     fn select_tab(&mut self, tab: RequestTab, _cx: &mut Context<Self>) {
         self.active_tab = tab;
+    }
+
+    pub fn set_response(&mut self, resp: model::HttpResponse, cx: &mut Context<Self>) {
+        self.response = Some(resp);
+        self.dirty_response = true;
+        cx.notify();
+    }
+
+    pub fn set_response_view(&mut self, view: ResponseView, cx: &mut Context<Self>) {
+        if self.active_response_view != view {
+            self.active_response_view = view;
+            self.dirty_response = true;
+            cx.notify();
+        }
+    }
+
+    pub fn update_response_display(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(resp) = &self.response {
+            let display_content = if self.active_response_view == ResponseView::Pretty {
+                serde_json::from_str::<Value>(&resp.body).ok().map(|v| format_json(&v)).unwrap_or_else(|| resp.body.clone())
+            } else {
+                resp.body.clone()
+            };
+            
+            let view_pretty = self.active_response_view == ResponseView::Pretty;
+            self.response_body_input.update(cx, |this, cx| {
+                this.set_value(display_content, window, cx);
+                this.set_highlighter(if view_pretty { Language::Json } else { Language::Plain }, cx);
+            });
+            self.dirty_response = false;
+        }
     }
 
     pub fn set_content_type(&mut self, content_type: &str, cx: &mut Context<Self>) {
@@ -449,10 +482,10 @@ impl ApiTab {
                 if let Some(resp) = &self.response {
                     match self.active_response_tab {
                         ResponseTab::Body => v_flex().size_full().child(h_flex().px_4().py_1().gap_2()
-                            .child(Button::new("pretty").label("Pretty").small().ghost().when(self.active_response_view == ResponseView::Pretty, |s| s.bg(colors.surface).text_color(colors.blue)).on_click(cx.listener(|this, _, _, cx| { this.active_response_view = ResponseView::Pretty; cx.notify(); })))
-                            .child(Button::new("raw").label("Raw").small().ghost().when(self.active_response_view == ResponseView::Raw, |s| s.bg(colors.surface).text_color(colors.blue)).on_click(cx.listener(|this, _, _, cx| { this.active_response_view = ResponseView::Raw; cx.notify(); })))
+                            .child(Button::new("pretty").label("Pretty").small().ghost().when(self.active_response_view == ResponseView::Pretty, |s| s.bg(colors.surface).text_color(colors.blue)).on_click(cx.listener(|this, _, _, cx| { this.set_response_view(ResponseView::Pretty, cx); })))
+                            .child(Button::new("raw").label("Raw").small().ghost().when(self.active_response_view == ResponseView::Raw, |s| s.bg(colors.surface).text_color(colors.blue)).on_click(cx.listener(|this, _, _, cx| { this.set_response_view(ResponseView::Raw, cx); })))
                         ).child(v_flex().flex_1().p_4().child(div().flex_1().bg(colors.bg).border_1().border_color(colors.border).p_1().rounded_md().child(Input::new(&self.response_body_input).size_full()))).into_any_element(),
-                        ResponseTab::Headers => v_flex().flex_1().p_4().overflow_y_scrollbar().children(resp.headers.iter().map(|h| h_flex().gap_2().py_1().border_b_1().border_color(colors.border).child(div().w_48().child(Label::new(h.key.clone()).text_color(colors.subtext))).child(div().flex_1().child(Label::new(h.value.clone()).text_color(colors.text))))).into_any_element()
+                        ResponseTab::Headers => v_flex().flex_1().p_4().overflow_y_scrollbar().children(resp.headers.iter().map(|h| h_flex().gap_2().py_1().border_b_1().border_color(colors.border).child(div().w_48().child(Label::new(h.key.as_str()).text_color(colors.subtext))).child(div().flex_1().child(Label::new(h.value.as_str()).text_color(colors.text))))).into_any_element()
                     }
                 } else {
                     v_flex().size_full().items_center().justify_center().gap_4().child(Icon::new(IconName::Globe).size_12().text_color(colors.subtext)).child(Label::new("No response yet").text_color(colors.subtext)).into_any_element()
@@ -465,23 +498,11 @@ impl Render for ApiTab {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let colors = self.theme.colors();
         let view = cx.weak_entity();
-        
-        // Sync response body to input entity if needed
-        if let Some(resp) = &self.response {
-            let display_content = if self.active_response_view == ResponseView::Pretty {
-                serde_json::from_str::<Value>(&resp.body).ok().map(|v| format_json(&v)).unwrap_or_else(|| resp.body.clone())
-            } else {
-                resp.body.clone()
-            };
-            if self.response_body_input.read(cx).value() != display_content {
-                let view_pretty = self.active_response_view == ResponseView::Pretty;
-                self.response_body_input.update(cx, |this, cx| {
-                    this.set_value(display_content, window, cx);
-                    this.set_highlighter(if view_pretty { Language::Json } else { Language::Plain }, cx);
-                });
-            }
-        }
 
+        if self.dirty_response {
+            self.update_response_display(window, cx);
+        }
+        
         v_flex().flex_1().size_full().bg(colors.bg)
             .child(self.render_url_bar(&colors, view.clone(), window, cx))
             .child(div().flex_1().size_full().child(
