@@ -1,7 +1,6 @@
 [book]
 authors = ["HiPoster Team"]
 language = "zh-cn"
-multilingual = false
 src = "src"
 title = "GPUI 实战进阶：从零到一构建高性能桌面应用"
 
@@ -14,3 +13,5 @@ edit-url-template = "https://github.com/obity/hiposter-gpui/edit/master/book/src
 [output.html.search]
 limit-results = 30
 copy-js = true
+
+[output.pdf]
