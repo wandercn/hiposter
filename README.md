@@ -4,6 +4,11 @@
 
 HiPoster is a high-performance, modern API testing tool built with Rust and the GPUI framework. It offers a fast, fluid, and native desktop experience designed to streamline your daily HTTP request debugging.
 
+<p align="center">
+  <img src="img/oceanic_next.jpg" alt="HiPoster Dark Theme" width="48%">
+  <img src="img/github_light.jpg" alt="HiPoster Light Theme" width="48%">
+</p>
+
 ## Features
 
 - **🚀 High Performance**: Built entirely in Rust and GPU-accelerated via Zed's GPUI framework.
