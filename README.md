@@ -1,6 +1,6 @@
 # HiPoster
 
-[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/wandercn/hiposter/total?style=flat-square&color=blue)](https://github.com/wandercn/hiposter/releases)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/wandercn/hiposter/total?style=flat-square&color=blue)](https://github.com/wandercn/hiposter/releases/latest)
 
 HiPoster is a high-performance, modern API testing tool built with Rust and the GPUI framework. It offers a fast, fluid, and native desktop experience designed to streamline your daily HTTP request debugging.
 
