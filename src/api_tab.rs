@@ -60,14 +60,35 @@ pub struct ApiTab {
     pub active_response_tab: ResponseTab,
     pub active_response_view: ResponseView,
     pub theme: AppTheme,
+    pub url_dirty: bool,
+    pub params_dirty: bool,
 }
 
 impl EventEmitter<model::HttpRequest> for ApiTab {}
 
 impl ApiTab {
     pub fn with_request(request: model::HttpRequest, theme: AppTheme, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let url = request.url.clone();
+        let mut url = request.url.clone();
         let auth = request.auth.clone();
+
+        if !url.contains('?') && !request.params.is_empty() {
+            let mut query = String::new();
+            for p in &request.params {
+                if !p.key.is_empty() {
+                    if !query.is_empty() {
+                        query.push('&');
+                    }
+                    query.push_str(&url_encode(&p.key));
+                    if !p.value.is_empty() {
+                        query.push('=');
+                        query.push_str(&url_encode(&p.value));
+                    }
+                }
+            }
+            if !query.is_empty() {
+                url = format!("{}?{}", url, query);
+            }
+        }
 
         let url_input = cx.new(|cx| {
             InputState::new(window, cx)
@@ -75,7 +96,8 @@ impl ApiTab {
                 .default_value(url)
         });
 
-        cx.observe(&url_input, |_, _, cx| {
+        cx.observe(&url_input, |this, _, cx| {
+            this.params_dirty = true;
             cx.notify();
         })
         .detach();
@@ -161,18 +183,32 @@ impl ApiTab {
             active_response_tab: ResponseTab::Body,
             active_response_view: ResponseView::Pretty,
             theme,
+            url_dirty: false,
+            params_dirty: true,
         }
     }
 
     fn add_param(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key"));
         let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value"));
+        
+        cx.observe(&key, |this, _, cx| {
+            this.url_dirty = true;
+            cx.notify();
+        }).detach();
+        
+        cx.observe(&value, |this, _, cx| {
+            this.url_dirty = true;
+            cx.notify();
+        }).detach();
+        
         self.params.push(KeyValueRow { key, value });
         cx.notify();
     }
 
     fn remove_param(&mut self, index: usize, _cx: &mut Context<Self>) {
         self.params.remove(index);
+        self.url_dirty = true;
     }
 
     fn add_header(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -240,6 +276,12 @@ impl ApiTab {
             (!key.is_empty()).then_some(model::Header { key, value })
         }).collect();
 
+        self.request.params = self.params.iter().filter_map(|row| {
+            let key = row.key.read(cx).value().trim().to_string();
+            let value = row.value.read(cx).value().to_string();
+            (!key.is_empty()).then_some(model::Header { key, value })
+        }).collect();
+
         self.request.auth.token = self.auth_token_input.read(cx).value().to_string();
         self.request.auth.username = self.auth_username_input.read(cx).value().to_string();
         self.request.auth.password = self.auth_password_input.read(cx).value().to_string();
@@ -299,6 +341,85 @@ impl ApiTab {
             let pretty = format_json(&v);
             self.body_input.update(cx, |this, cx| {
                 this.set_value(pretty, window, cx);
+            });
+        }
+    }
+
+    fn get_current_params_from_ui(&self, cx: &App) -> Vec<(String, String)> {
+        self.params.iter().map(|row| {
+            let k = row.key.read(cx).value().to_string();
+            let v = row.value.read(cx).value().to_string();
+            (k, v)
+        }).collect()
+    }
+
+    fn sync_params_from_url(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.params_dirty = false;
+        
+        let url_val = self.url_input.read(cx).value().to_string();
+        let (_base, parsed) = parse_url_params(&url_val);
+        
+        let decoded_parsed: Vec<(String, String)> = parsed.into_iter()
+            .map(|(k, v)| (url_decode(&k), url_decode(&v)))
+            .collect();
+            
+        let current_ui = self.get_current_params_from_ui(cx);
+        
+        if decoded_parsed == current_ui {
+            return;
+        }
+        
+        self.params.clear();
+        for (k, v) in decoded_parsed {
+            let key = cx.new(|cx| InputState::new(window, cx).default_value(k));
+            let value = cx.new(|cx| InputState::new(window, cx).default_value(v));
+            
+            cx.observe(&key, |this, _, cx| {
+                this.url_dirty = true;
+                cx.notify();
+            }).detach();
+            
+            cx.observe(&value, |this, _, cx| {
+                this.url_dirty = true;
+                cx.notify();
+            }).detach();
+            
+            self.params.push(KeyValueRow { key, value });
+        }
+        cx.notify();
+    }
+
+    fn sync_url_from_params(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.url_dirty = false;
+        
+        let current_url = self.url_input.read(cx).value().to_string();
+        let (base, _parsed) = parse_url_params(&current_url);
+        
+        let ui_params = self.get_current_params_from_ui(cx);
+        
+        let mut query = String::new();
+        for (k, v) in ui_params {
+            if !k.is_empty() {
+                if !query.is_empty() {
+                    query.push('&');
+                }
+                query.push_str(&url_encode(&k));
+                if !v.is_empty() {
+                    query.push('=');
+                    query.push_str(&url_encode(&v));
+                }
+            }
+        }
+        
+        let new_url = if query.is_empty() {
+            base
+        } else {
+            format!("{}?{}", base, query)
+        };
+        
+        if new_url != current_url {
+            self.url_input.update(cx, |input, cx| {
+                input.set_value(new_url, window, cx);
             });
         }
     }
@@ -504,6 +625,12 @@ impl Render for ApiTab {
         let colors = self.theme.colors();
         let view = cx.weak_entity();
 
+        if self.params_dirty {
+            self.sync_params_from_url(window, cx);
+        }
+        if self.url_dirty {
+            self.sync_url_from_params(window, cx);
+        }
         if self.dirty_response {
             self.update_response_display(window, cx);
         }
@@ -515,5 +642,62 @@ impl Render for ApiTab {
                     .child(resizable_panel().size(px(450.)).min_size(px(100.)).child(self.render_request_panel(&colors, view.clone(), window, cx)))
                     .child(resizable_panel().flex_1().min_size(px(150.)).child(self.render_response_panel(&colors, view.clone(), window, cx)))
             ))
+    }
+}
+
+pub fn url_decode(s: &str) -> String {
+    let mut decoded = String::new();
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            let mut hex = String::new();
+            if let Some(h1) = chars.next() { hex.push(h1); }
+            if let Some(h2) = chars.next() { hex.push(h2); }
+            if let Ok(b) = u8::from_str_radix(&hex, 16) {
+                decoded.push(b as char);
+            } else {
+                decoded.push('%');
+                decoded.push_str(&hex);
+            }
+        } else if c == '+' {
+            decoded.push(' ');
+        } else {
+            decoded.push(c);
+        }
+    }
+    decoded
+}
+
+pub fn url_encode(s: &str) -> String {
+    let mut encoded = String::new();
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                encoded.push(b as char);
+            }
+            b' ' => {
+                encoded.push('+');
+            }
+            _ => {
+                encoded.push_str(&format!("%{:02X}", b));
+            }
+        }
+    }
+    encoded
+}
+
+pub fn parse_url_params(url: &str) -> (String, Vec<(String, String)>) {
+    if let Some((base, query)) = url.split_once('?') {
+        let mut params = Vec::new();
+        for pair in query.split('&') {
+            if pair.is_empty() {
+                continue;
+            }
+            let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
+            params.push((k.to_string(), v.to_string()));
+        }
+        (base.to_string(), params)
+    } else {
+        (url.to_string(), Vec::new())
     }
 }
