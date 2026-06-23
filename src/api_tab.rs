@@ -104,8 +104,8 @@ impl ApiTab {
 
         let mut headers = Vec::new();
         for h in &request.headers {
-            let key = cx.new(|cx| InputState::new(window, cx).default_value(h.key.clone()));
-            let value = cx.new(|cx| InputState::new(window, cx).default_value(h.value.clone()));
+            let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key").default_value(h.key.clone()));
+            let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value").default_value(h.value.clone()));
             headers.push(KeyValueRow { key, value });
         }
 
@@ -117,15 +117,15 @@ impl ApiTab {
             model::HttpBody::Raw(raw) => body_str = raw.clone(),
             model::HttpBody::FormData(form) => {
                 for item in form {
-                    let key = cx.new(|cx| InputState::new(window, cx).default_value(item.key.clone()));
-                    let value = cx.new(|cx| InputState::new(window, cx).default_value(item.value.clone()));
+                    let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key").default_value(item.key.clone()));
+                    let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value").default_value(item.value.clone()));
                     form_data.push(KeyValueRow { key, value });
                 }
             }
             model::HttpBody::UrlEncoded(form) => {
                 for item in form {
-                    let key = cx.new(|cx| InputState::new(window, cx).default_value(item.key.clone()));
-                    let value = cx.new(|cx| InputState::new(window, cx).default_value(item.value.clone()));
+                    let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key").default_value(item.key.clone()));
+                    let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value").default_value(item.value.clone()));
                     urlencoded.push(KeyValueRow { key, value });
                 }
             }
@@ -371,8 +371,8 @@ impl ApiTab {
         
         self.params.clear();
         for (k, v) in decoded_parsed {
-            let key = cx.new(|cx| InputState::new(window, cx).default_value(k));
-            let value = cx.new(|cx| InputState::new(window, cx).default_value(v));
+            let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key").default_value(k));
+            let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value").default_value(v));
             
             cx.observe(&key, |this, _, cx| {
                 this.url_dirty = true;
