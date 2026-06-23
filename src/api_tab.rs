@@ -653,10 +653,37 @@ impl ApiTab {
                         .into_any_element()
                 } else if let Some(resp) = &self.response {
                     match self.active_response_tab {
-                        ResponseTab::Body => v_flex().size_full().child(h_flex().px_4().py_1().gap_2()
-                            .child(Button::new("pretty").label("Pretty").small().ghost().when(self.active_response_view == ResponseView::Pretty, |s| s.bg(colors.surface).text_color(colors.blue)).on_click(cx.listener(|this, _, _, cx| { this.set_response_view(ResponseView::Pretty, cx); })))
-                            .child(Button::new("raw").label("Raw").small().ghost().when(self.active_response_view == ResponseView::Raw, |s| s.bg(colors.surface).text_color(colors.blue)).on_click(cx.listener(|this, _, _, cx| { this.set_response_view(ResponseView::Raw, cx); })))
-                        ).child(v_flex().flex_1().p_4().child(div().flex_1().bg(colors.bg).border_1().border_color(colors.border).p_1().rounded_md().child(Input::new(&self.response_body_input).size_full()))).into_any_element(),
+                        ResponseTab::Body => v_flex().size_full()
+                            .child(
+                                h_flex().px_4().py_1p5().child(
+                                    h_flex().bg(colors.sidebar).rounded_md().border_1().border_color(colors.border).p_0p5().gap_0p5()
+                                        .child(
+                                            Button::new("pretty")
+                                                .label("Pretty")
+                                                .small()
+                                                .ghost()
+                                                .when(self.active_response_view == ResponseView::Pretty, |s| s.bg(colors.bg).text_color(colors.blue))
+                                                .when(self.active_response_view != ResponseView::Pretty, |s| s.text_color(colors.subtext))
+                                                .on_click(cx.listener(|this, _, _, cx| { this.set_response_view(ResponseView::Pretty, cx); }))
+                                        )
+                                        .child(
+                                            Button::new("raw")
+                                                .label("Raw")
+                                                .small()
+                                                .ghost()
+                                                .when(self.active_response_view == ResponseView::Raw, |s| s.bg(colors.bg).text_color(colors.blue))
+                                                .when(self.active_response_view != ResponseView::Raw, |s| s.text_color(colors.subtext))
+                                                .on_click(cx.listener(|this, _, _, cx| { this.set_response_view(ResponseView::Raw, cx); }))
+                                        )
+                                )
+                            )
+                            .child(
+                                v_flex().flex_1().p_4().child(
+                                    div().flex_1().bg(colors.bg).border_1().border_color(colors.border).p_1().rounded_md()
+                                        .child(Input::new(&self.response_body_input).size_full())
+                                )
+                            )
+                            .into_any_element(),
                         ResponseTab::Headers => v_flex().flex_1().p_4().overflow_y_scrollbar().children(resp.headers.iter().map(|h| h_flex().gap_2().py_1().border_b_1().border_color(colors.border).child(div().w_48().child(Label::new(h.key.as_str()).text_color(colors.subtext))).child(div().flex_1().child(Label::new(h.value.as_str()).text_color(colors.text))))).into_any_element()
                     }
                 } else {
