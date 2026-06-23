@@ -441,6 +441,7 @@ impl ApiTab {
                             .label(format!("{:?}", method))
                             .ghost()
                             .text_color(method_color)
+                            .dropdown_caret(true)
                             .dropdown_menu({
                                 let view = view.clone();
                                 move |menu, _, _| {
@@ -521,27 +522,37 @@ impl ApiTab {
                     .child(
                         h_flex().gap_4().items_center()
                             .child(Label::new("Body Type:").text_color(colors.text))
-                            .child(Button::new("body-type-dropdown").label(self.request.content_type.clone()).dropdown_menu({
-                                let view = view.clone();
-                                move |menu, _, _| {
-                                    let types = [
-                                        ("None", "application/none"), ("JSON", "application/json"), 
-                                        ("Text", "text/plain"), ("Form-data", "multipart/form-data"),
-                                        ("Urlencoded", "application/x-www-form-urlencoded"),
-                                        ("XML", "application/xml"), ("HTML", "text/html")
-                                    ];
-                                    let mut menu = menu;
-                                    for (label, val) in types {
-                                        let view = view.clone();
-                                        menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _, cx| {
-                                            view.update(cx, |this, cx| this.set_content_type(val, cx)).ok();
-                                        }));
+                            .child(Button::new("body-type-dropdown")
+                                .label(self.request.content_type.clone())
+                                .ghost()
+                                .small()
+                                .dropdown_caret(true)
+                                .dropdown_menu({
+                                    let view = view.clone();
+                                    move |menu, _, _| {
+                                        let types = [
+                                            ("None", "application/none"), ("JSON", "application/json"), 
+                                            ("Text", "text/plain"), ("Form-data", "multipart/form-data"),
+                                            ("Urlencoded", "application/x-www-form-urlencoded"),
+                                            ("XML", "application/xml"), ("HTML", "text/html")
+                                        ];
+                                        let mut menu = menu;
+                                        for (label, val) in types {
+                                            let view = view.clone();
+                                            menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _, cx| {
+                                                view.update(cx, |this, cx| this.set_content_type(val, cx)).ok();
+                                            }));
+                                        }
+                                        menu
                                     }
-                                    menu
-                                }
-                            }))
+                                })
+                            )
                             .when(self.request.content_type == "application/json", |this| {
-                                this.child(Button::new("format-json").label("Format JSON").on_click(cx.listener(|this, _, window, cx| this.format_request_json(window, cx))))
+                                this.child(Button::new("format-json")
+                                    .label("Format JSON")
+                                    .ghost()
+                                    .small()
+                                    .on_click(cx.listener(|this, _, window, cx| this.format_request_json(window, cx))))
                             })
                             .when(self.request.content_type == "multipart/form-data", |this| {
                                 this.child(Button::new("add-form-data").icon(IconName::Plus).label("Add").small().ghost().on_click(cx.listener(|this, _, window, cx| this.add_form_data(window, cx))))
@@ -569,19 +580,25 @@ impl ApiTab {
             RequestTab::Auth => {
                 let view = cx.weak_entity();
                 v_flex().gap_4()
-                    .child(h_flex().gap_4().items_center().child(Label::new("Auth Type:").text_color(colors.text)).child(Button::new("auth-dropdown").label(format!("{:?}", self.request.auth.auth_type)).dropdown_menu({
-                        let view = view.clone();
-                        move |menu, _, _| {
-                            let mut menu = menu;
-                            for t in [model::AuthType::None, model::AuthType::Bearer, model::AuthType::Basic] {
-                                let t_clone = t.clone(); let view = view.clone();
-                                menu = menu.item(PopupMenuItem::new(format!("{:?}", t)).on_click(move |_, _, cx| {
-                                    view.update(cx, |this, cx| { this.request.auth.auth_type = t_clone.clone(); cx.notify(); }).ok();
-                                }));
+                    .child(h_flex().gap_4().items_center().child(Label::new("Auth Type:").text_color(colors.text)).child(Button::new("auth-dropdown")
+                        .label(format!("{:?}", self.request.auth.auth_type))
+                        .ghost()
+                        .small()
+                        .dropdown_caret(true)
+                        .dropdown_menu({
+                            let view = view.clone();
+                            move |menu, _, _| {
+                                let mut menu = menu;
+                                for t in [model::AuthType::None, model::AuthType::Bearer, model::AuthType::Basic] {
+                                    let t_clone = t.clone(); let view = view.clone();
+                                    menu = menu.item(PopupMenuItem::new(format!("{:?}", t)).on_click(move |_, _, cx| {
+                                        view.update(cx, |this, cx| { this.request.auth.auth_type = t_clone.clone(); cx.notify(); }).ok();
+                                    }));
+                                }
+                                menu
                             }
-                            menu
-                        }
-                    })))
+                        })
+                    ))
                     .child(v_flex().gap_2()
                         .when(self.request.auth.auth_type == model::AuthType::Bearer, |this| this.child(Label::new("Token").text_color(colors.text)).child(Input::new(&self.auth_token_input)))
                         .when(self.request.auth.auth_type == model::AuthType::Basic, |this| this.child(Label::new("User").text_color(colors.text)).child(Input::new(&self.auth_username_input)).child(Label::new("Pass").text_color(colors.text)).child(Input::new(&self.auth_password_input)))
