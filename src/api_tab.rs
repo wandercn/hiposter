@@ -260,13 +260,16 @@ impl ApiTab {
 
         #[cfg(target_os = "windows")]
         {
-            let output = std::process::Command::new("powershell")
-                .args(&[
-                    "-NoProfile",
-                    "-Command",
-                    "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.Multiselect = $false; [void]$f.ShowDialog(); $f.FileName",
-                ])
-                .output();
+            use std::os::windows::process::CommandExt;
+            let mut cmd = std::process::Command::new("powershell");
+            cmd.args(&[
+                "-NoProfile",
+                "-Command",
+                "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.Multiselect = $false; [void]$f.ShowDialog(); $f.FileName",
+            ]);
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            
+            let output = cmd.output();
             if let Ok(out) = output {
                 if out.status.success() {
                     let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
