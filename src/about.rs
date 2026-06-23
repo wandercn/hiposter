@@ -73,6 +73,7 @@ impl Render for AboutWindow {
                     )
                     .child(
                         Button::new("github-link")
+                            .icon(gpui_component::IconName::ExternalLink)
                             .label("GitHub Repository")
                             .ghost()
                             .small()
