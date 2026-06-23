@@ -56,6 +56,22 @@ fn build_mac_menus() -> Vec<Menu> {
     ]
 }
 
+pub fn open_about_window(cx: &mut App) {
+    let options = WindowOptions {
+        window_bounds: Some(WindowBounds::centered(size(px(400.), px(300.)), cx)),
+        titlebar: Some(gpui_component::TitleBar::title_bar_options()),
+        window_decorations: Some(WindowDecorations::Server),
+        kind: WindowKind::Normal,
+        is_movable: true,
+        ..Default::default()
+    };
+    
+    cx.open_window(options, |window, cx| {
+        let view = cx.new(|cx| AboutWindow::new(cx));
+        cx.new(|cx| gpui_component::Root::new(view, window, cx))
+    }).ok();
+}
+
 pub fn run() {
     let _runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -71,19 +87,7 @@ pub fn run() {
         cx.set_menus(build_mac_menus());
         
         cx.on_action(|_: &OpenAbout, cx: &mut App| {
-            let options = WindowOptions {
-                window_bounds: Some(WindowBounds::centered(size(px(400.), px(300.)), cx)),
-                titlebar: Some(gpui_component::TitleBar::title_bar_options()),
-                window_decorations: Some(WindowDecorations::Server),
-                kind: WindowKind::Normal,
-                is_movable: true,
-                ..Default::default()
-            };
-            
-            cx.open_window(options, |window, cx| {
-                let view = cx.new(|cx| AboutWindow::new(cx));
-                cx.new(|cx| gpui_component::Root::new(view, window, cx))
-            }).ok();
+            open_about_window(cx);
         });
         
         cx.on_action(|_: &Quit, cx: &mut App| {

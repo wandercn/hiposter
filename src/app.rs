@@ -386,7 +386,7 @@ impl Render for Hiposter {
                                     .ghost()
                                     .small()
                                     .on_click(|_, _, cx| {
-                                        cx.dispatch_action(&crate::OpenAbout);
+                                        crate::open_about_window(cx);
                                     })
                             )
                         })
