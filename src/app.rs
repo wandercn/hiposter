@@ -381,41 +381,49 @@ impl Render for Hiposter {
                         h_flex().px_3().gap_2()
                         .when(cfg!(not(target_os = "macos")), |this| {
                             this.child(
-                                Button::new("about-btn")
-                                    .label("About")
-                                    .ghost()
-                                    .small()
-                                    .on_click(|_, _, cx| {
-                                        crate::open_about_window(cx);
-                                    })
+                                div()
+                                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                                    .child(
+                                        Button::new("about-btn")
+                                            .label("About")
+                                            .ghost()
+                                            .small()
+                                            .on_click(|_, _, cx| {
+                                                crate::open_about_window(cx);
+                                            })
+                                    )
                             )
                         })
                         .child(
-                            Button::new("theme-dropdown")
-                                .icon(IconName::Palette)
-                                .label(format!("Theme: {}", self.theme.name()))
-                                .ghost()
-                                .small()
-                                .dropdown_caret(true)
-                                .dropdown_menu({
-                                    let view = view.clone();
-                                    move |menu, _, _| {
-                                        let themes = [
-                                            AppTheme::GitHubLight, AppTheme::SolarizedLight, AppTheme::OneLight, 
-                                            AppTheme::VitesseLight, AppTheme::CatppuccinLatte,
-                                            AppTheme::NordLight, AppTheme::GruvboxLight, AppTheme::AyuLight,
-                                            AppTheme::OceanicNext, AppTheme::Monokai
-                                        ];
-                                        let mut menu = menu;
-                                        for t in themes {
+                            div()
+                                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                                .child(
+                                    Button::new("theme-dropdown")
+                                        .icon(IconName::Palette)
+                                        .label(format!("Theme: {}", self.theme.name()))
+                                        .ghost()
+                                        .small()
+                                        .dropdown_caret(true)
+                                        .dropdown_menu({
                                             let view = view.clone();
-                                            menu = menu.item(PopupMenuItem::new(t.name()).on_click(move |_, window, cx| {
-                                                view.update(cx, |this, cx| { this.set_theme(t, window, cx); }).ok();
-                                            }));
-                                        }
-                                        menu
-                                    }
-                                })
+                                            move |menu, _, _| {
+                                                let themes = [
+                                                    AppTheme::GitHubLight, AppTheme::SolarizedLight, AppTheme::OneLight, 
+                                                    AppTheme::VitesseLight, AppTheme::CatppuccinLatte,
+                                                    AppTheme::NordLight, AppTheme::GruvboxLight, AppTheme::AyuLight,
+                                                    AppTheme::OceanicNext, AppTheme::Monokai
+                                                ];
+                                                let mut menu = menu;
+                                                for t in themes {
+                                                    let view = view.clone();
+                                                    menu = menu.item(PopupMenuItem::new(t.name()).on_click(move |_, window, cx| {
+                                                        view.update(cx, |this, cx| { this.set_theme(t, window, cx); }).ok();
+                                                    }));
+                                                }
+                                                menu
+                                            }
+                                        })
+                                )
                         )
                     )
             )
