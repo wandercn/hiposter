@@ -606,10 +606,43 @@ impl ApiTab {
                     .child(Tab::new().label("Body").selected(self.active_response_tab == ResponseTab::Body).on_click(cx.listener(|this, _, _, cx| { this.active_response_tab = ResponseTab::Body; cx.notify(); })))
                     .child(Tab::new().label("Headers").selected(self.active_response_tab == ResponseTab::Headers).on_click(cx.listener(|this, _, _, cx| { this.active_response_tab = ResponseTab::Headers; cx.notify(); })))
                     .suffix(if let Some(resp) = &self.response {
-                        h_flex().gap_4().items_center().px_4()
-                            .child(h_flex().gap_1().items_center().child(Icon::new(if resp.status_code < 400 { IconName::CircleCheck } else { IconName::CircleX }).small().text_color(if resp.status_code < 400 { colors.green } else { colors.red })).child(Label::new(format!("{} {}", resp.status_code, resp.status_text)).text_color(if resp.status_code < 400 { colors.green } else { colors.red })))
-                            .child(h_flex().gap_1().items_center().child(Icon::new(IconName::Info).small().text_color(colors.subtext)).child(Label::new(format!("{} ms", resp.elapsed_ms)).text_color(colors.subtext)))
-                            .child(h_flex().gap_1().items_center().child(Icon::new(IconName::Inbox).small().text_color(colors.subtext)).child(Label::new(format!("{} bytes", resp.size)).text_color(colors.subtext)))
+                        let is_success = resp.status_code < 400 && resp.status_code > 0;
+                        let mut status_bg = if is_success { colors.green } else { colors.red };
+                        status_bg.a = 0.15;
+
+                        let mut meta_bg = colors.text;
+                        meta_bg.a = 0.08;
+
+                        h_flex().gap_2().items_center().px_4()
+                            // Status Code Badge
+                            .child(
+                                h_flex().items_center().gap_1().px_2().py_0p5().rounded_md().bg(status_bg)
+                                    .child(Icon::new(if is_success { IconName::CircleCheck } else { IconName::CircleX })
+                                        .small()
+                                        .text_color(if is_success { colors.green } else { colors.red }))
+                                    .child(Label::new(format!("{} {}", resp.status_code, resp.status_text))
+                                        .text_color(if is_success { colors.green } else { colors.red })
+                                        .text_size(rems(0.75))
+                                        .font_weight(gpui::FontWeight::BOLD))
+                            )
+                            // Time Badge
+                            .child(
+                                h_flex().items_center().gap_1().px_2().py_0p5().rounded_md().bg(meta_bg)
+                                    .child(Icon::new(IconName::Info).small().text_color(colors.subtext))
+                                    .child(Label::new(format!("{} ms", resp.elapsed_ms))
+                                        .text_color(colors.subtext)
+                                        .text_size(rems(0.75))
+                                        .font_weight(gpui::FontWeight::MEDIUM))
+                            )
+                            // Size Badge
+                            .child(
+                                h_flex().items_center().gap_1().px_2().py_0p5().rounded_md().bg(meta_bg)
+                                    .child(Icon::new(IconName::Inbox).small().text_color(colors.subtext))
+                                    .child(Label::new(format!("{} bytes", resp.size))
+                                        .text_color(colors.subtext)
+                                        .text_size(rems(0.75))
+                                        .font_weight(gpui::FontWeight::MEDIUM))
+                            )
                     } else { div() })
             )
             .child(v_flex().flex_1().child(
