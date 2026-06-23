@@ -240,21 +240,85 @@ impl ApiTab {
     }
 
     fn select_file(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let output = std::process::Command::new("osascript")
-            .arg("-e")
-            .arg("POSIX path of (choose file)")
-            .output();
-        if let Ok(out) = output {
-            if out.status.success() {
-                let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                if !path.is_empty() {
-                    if let Some(row) = self.form_data.get_mut(index) {
-                        row.value.update(cx, |input, cx| {
-                            input.set_value(path, window, cx);
-                        });
-                        cx.notify();
+        let mut chosen_path = None;
+
+        #[cfg(target_os = "macos")]
+        {
+            let output = std::process::Command::new("osascript")
+                .arg("-e")
+                .arg("POSIX path of (choose file)")
+                .output();
+            if let Ok(out) = output {
+                if out.status.success() {
+                    let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                    if !path.is_empty() {
+                        chosen_path = Some(path);
                     }
                 }
+            }
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            let output = std::process::Command::new("powershell")
+                .args(&[
+                    "-NoProfile",
+                    "-Command",
+                    "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.Multiselect = $false; [void]$f.ShowDialog(); $f.FileName",
+                ])
+                .output();
+            if let Ok(out) = output {
+                if out.status.success() {
+                    let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                    if !path.is_empty() {
+                        chosen_path = Some(path);
+                    }
+                }
+            }
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            let output = std::process::Command::new("zenity")
+                .arg("--file-selection")
+                .output();
+            
+            let mut success_output = None;
+            if let Ok(out) = &output {
+                if out.status.success() {
+                    success_output = Some(String::from_utf8_lossy(&out.stdout).trim().to_string());
+                }
+            }
+
+            let need_kdialog = match &output {
+                Err(e) => e.kind() == std::io::ErrorKind::NotFound,
+                _ => false,
+            };
+
+            if need_kdialog {
+                let k_output = std::process::Command::new("kdialog")
+                    .arg("--getopenfilename")
+                    .output();
+                if let Ok(out) = k_output {
+                    if out.status.success() {
+                        success_output = Some(String::from_utf8_lossy(&out.stdout).trim().to_string());
+                    }
+                }
+            }
+
+            if let Some(path) = success_output {
+                if !path.is_empty() {
+                    chosen_path = Some(path);
+                }
+            }
+        }
+
+        if let Some(path) = chosen_path {
+            if let Some(row) = self.form_data.get_mut(index) {
+                row.value.update(cx, |input, cx| {
+                    input.set_value(path, window, cx);
+                });
+                cx.notify();
             }
         }
     }
