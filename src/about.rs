@@ -44,7 +44,7 @@ impl Render for AboutWindow {
                             .text_color(text_color)
                     )
                     .child(
-                        Label::new("Version 0.1.0")
+                        Label::new("Version 0.1.2")
                             .text_color(subtext_color)
                     )
             )
