@@ -379,6 +379,17 @@ impl Render for Hiposter {
                     .child(div().flex_1())
                     .child(
                         h_flex().px_3().gap_2()
+                        .when(cfg!(not(target_os = "macos")), |this| {
+                            this.child(
+                                Button::new("about-btn")
+                                    .label("About")
+                                    .ghost()
+                                    .small()
+                                    .on_click(|_, _, cx| {
+                                        cx.dispatch_action(&crate::OpenAbout);
+                                    })
+                            )
+                        })
                         .child(
                             Button::new("theme-dropdown")
                                 .icon(IconName::Palette)
