@@ -92,6 +92,8 @@ pub fn run() {
         
         cx.bind_keys([
             KeyBinding::new("cmd-q", Quit, None),
+            KeyBinding::new("ctrl-q", Quit, None),
+            KeyBinding::new("alt-f4", Quit, None),
         ]);
 
         let window_options = WindowOptions {
