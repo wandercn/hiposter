@@ -377,7 +377,12 @@ impl Render for Hiposter {
                     .child(
                         h_flex().px_3().gap_2()
                         .child(
-                            Button::new("theme-dropdown").label(format!("Theme: {}", self.theme.name())).ghost().small().dropdown_caret(true)
+                            Button::new("theme-dropdown")
+                                .icon(IconName::Palette)
+                                .label(format!("Theme: {}", self.theme.name()))
+                                .ghost()
+                                .small()
+                                .dropdown_caret(true)
                                 .dropdown_menu({
                                     let view = view.clone();
                                     move |menu, _, _| {
