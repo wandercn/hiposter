@@ -196,6 +196,7 @@ impl Hiposter {
             let config = serde_json::json!({
                 "name" : theme.name(),
                 "mode" : mode_str,
+                "shadow" : true,
                 "colors" : {
                     "background" : hsla_to_hex(colors.bg),
                     "foreground" : hsla_to_hex(colors.text),
@@ -213,6 +214,8 @@ impl Hiposter {
 
             if let Ok(config) = serde_json::from_value::<gpui_component::theme::ThemeConfig>(config) {
                 global_theme.apply_config(&std::rc::Rc::new(config));
+                global_theme.font_family = "Inter".into();
+                global_theme.mono_font_family = "JetBrains Mono".into();
                 gpui_component::theme::Theme::change(gpui_theme_mode, None, cx);
             }
         });

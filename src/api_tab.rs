@@ -665,7 +665,7 @@ impl ApiTab {
             .child(v_flex().flex_1().child(
                 if self.loading {
                     v_flex().size_full().items_center().justify_center().gap_4()
-                        .child(Icon::new(IconName::Loader).size_12().text_color(colors.blue))
+                        .child(gpui_component::spinner::Spinner::new().with_size(gpui_component::Size::Large).color(colors.blue))
                         .child(Label::new("Sending request...").text_color(colors.subtext))
                         .into_any_element()
                 } else if let Some(resp) = &self.response {
