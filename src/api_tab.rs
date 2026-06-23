@@ -561,7 +561,7 @@ impl ApiTab {
                                 h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
                                 .child(Button::new(format!("rem-ue-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| { this.remove_urlencoded(i, cx); cx.notify(); })))
                             })).into_any_element(),
-                            _ => div().flex_1().bg(colors.bg).border_1().border_color(colors.border).p_1().rounded_md().child(Input::new(&self.body_input).size_full()).into_any_element(),
+                            _ => Input::new(&self.body_input).size_full().into_any_element(),
                         }
                     )
                     .into_any_element()
@@ -679,8 +679,7 @@ impl ApiTab {
                             )
                             .child(
                                 v_flex().flex_1().p_4().child(
-                                    div().flex_1().bg(colors.bg).border_1().border_color(colors.border).p_1().rounded_md()
-                                        .child(Input::new(&self.response_body_input).size_full())
+                                    Input::new(&self.response_body_input).size_full()
                                 )
                             )
                             .into_any_element(),
