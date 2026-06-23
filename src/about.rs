@@ -29,22 +29,9 @@ impl Render for AboutWindow {
             .justify_center()
             .gap_4()
             .child(
-                div()
+                gpui::img("icons/logo.png")
                     .w_20()
                     .h_20()
-                    .bg(theme.colors.group_box)
-                    .border_1()
-                    .border_color(theme.colors.border)
-                    .rounded_2xl()
-                    .shadow_md()
-                    .p_3()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .child(
-                        gpui::img("icons/logo.png")
-                            .size_full()
-                    )
             )
             .child(
                 v_flex()
