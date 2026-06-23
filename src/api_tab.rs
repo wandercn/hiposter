@@ -493,24 +493,24 @@ impl ApiTab {
     fn render_request_panel(&self, colors: &ThemeColors, _view: WeakEntity<Self>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let request_content = match self.active_tab {
             RequestTab::Params => {
-                v_flex().gap_3().child(
+                v_flex().size_full().gap_3().child(
                     h_flex().justify_between().items_center()
                         .child(Label::new("Query Parameters").text_color(colors.text))
                         .child(Button::new("add-param").icon(IconName::Plus).label("Add").small().ghost().on_click(cx.listener(|this, _, window, cx| this.add_param(window, cx))))
                 )
-                .child(v_flex().gap_2().children(self.params.iter().enumerate().map(|(i, row)| {
+                .child(v_flex().flex_1().overflow_y_scrollbar().gap_2().children(self.params.iter().enumerate().map(|(i, row)| {
                     h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
                     .child(Button::new(format!("rem-p-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| { this.remove_param(i, cx); cx.notify(); })))
                 })))
                 .into_any_element()
             }
             RequestTab::Headers => {
-                v_flex().gap_3().child(
+                v_flex().size_full().gap_3().child(
                     h_flex().justify_between().items_center()
                         .child(Label::new("Request Headers").text_color(colors.text))
                         .child(Button::new("add-header").icon(IconName::Plus).label("Add").small().ghost().on_click(cx.listener(|this, _, window, cx| this.add_header(window, cx))))
                 )
-                .child(v_flex().gap_2().children(self.headers.iter().enumerate().map(|(i, row)| {
+                .child(v_flex().flex_1().overflow_y_scrollbar().gap_2().children(self.headers.iter().enumerate().map(|(i, row)| {
                     h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
                     .child(Button::new(format!("rem-h-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| { this.remove_header(i, cx); cx.notify(); })))
                 })))
