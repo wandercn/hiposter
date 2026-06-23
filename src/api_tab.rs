@@ -425,38 +425,51 @@ impl ApiTab {
     }
 
     fn render_url_bar(&self, colors: &ThemeColors, view: WeakEntity<Self>, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let method = self.request.method.clone();
+        let method_color = match method {
+            model::HttpMethod::GET => colors.green,
+            model::HttpMethod::POST => colors.yellow,
+            _ => colors.text,
+        };
+
         h_flex()
             .px_4().py_2().border_b_1().border_color(colors.border).gap_3()
             .child(
-                Button::new("method-dropdown")
-                    .label(format!("{:?}", self.request.method))
-                    .dropdown_menu({
-                        let view = view.clone();
-                        move |menu, _, _| {
-                            let methods = [
-                                model::HttpMethod::GET, model::HttpMethod::POST,
-                                model::HttpMethod::PUT, model::HttpMethod::DELETE,
-                                model::HttpMethod::PATCH, model::HttpMethod::HEAD,
-                            ];
-                            let mut menu = menu;
-                            for method in methods {
-                                let method_clone = method.clone();
+                h_flex().flex_1().bg(colors.sidebar).rounded_md().border_1().border_color(colors.border).items_center()
+                    .child(
+                        Button::new("method-dropdown")
+                            .label(format!("{:?}", method))
+                            .ghost()
+                            .text_color(method_color)
+                            .dropdown_menu({
                                 let view = view.clone();
-                                menu = menu.item(
-                                    PopupMenuItem::new(format!("{:?}", method))
-                                        .on_click(move |_, _, cx| {
-                                            view.update(cx, |this, cx| {
-                                                this.set_method(method_clone.clone(), cx);
-                                                cx.notify();
-                                            }).ok();
-                                        })
-                                );
-                            }
-                            menu
-                        }
-                    })
+                                move |menu, _, _| {
+                                    let methods = [
+                                        model::HttpMethod::GET, model::HttpMethod::POST,
+                                        model::HttpMethod::PUT, model::HttpMethod::DELETE,
+                                        model::HttpMethod::PATCH, model::HttpMethod::HEAD,
+                                    ];
+                                    let mut menu = menu;
+                                    for method in methods {
+                                        let method_clone = method.clone();
+                                        let view = view.clone();
+                                        menu = menu.item(
+                                            PopupMenuItem::new(format!("{:?}", method))
+                                                .on_click(move |_, _, cx| {
+                                                    view.update(cx, |this, cx| {
+                                                        this.set_method(method_clone.clone(), cx);
+                                                        cx.notify();
+                                                    }).ok();
+                                                })
+                                        );
+                                    }
+                                    menu
+                                }
+                            })
+                    )
+                    .child(div().w_px().h_5().bg(colors.border).mx_1())
+                    .child(Input::new(&self.url_input).flex_1().bordered(false).focus_bordered(false))
             )
-            .child(Input::new(&self.url_input).flex_1())
             .child(
                 Button::new("send")
                     .primary()

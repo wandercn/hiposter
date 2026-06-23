@@ -289,25 +289,24 @@ impl Hiposter {
             .child(v_flex().flex_1().overflow_y_scrollbar().children(self.history.iter().enumerate().map(|(i, item)| {
                 let method = item.request.method.clone();
                 let request = item.request.clone();
+                
+                let mut method_bg = match method {
+                    model::HttpMethod::GET => colors.green,
+                    model::HttpMethod::POST => colors.yellow,
+                    _ => colors.text,
+                };
+                method_bg.a = 0.15;
+
                 h_flex().id(("history-item", i)).group("history-item").p_2().cursor_pointer().hover(|s| s.bg(colors.surface)).on_click(cx.listener(move |this, _, window, cx| {
                     this.add_tab(request.clone(), window, cx);
                 }))
                 .child(
-                    h_flex().gap_2().items_center()
-                        .child(Icon::new(match method {
-                            model::HttpMethod::GET => IconName::ArrowDown,
-                            model::HttpMethod::POST => IconName::ArrowUp,
-                            _ => IconName::Info,
-                        }).small().text_color(match method {
-                            model::HttpMethod::GET => colors.green,
-                            model::HttpMethod::POST => colors.yellow,
-                            _ => colors.text,
-                        }))
+                    h_flex().items_center().justify_center().w_16().px_1p5().py_0p5().rounded_md().bg(method_bg)
                         .child(Label::new(format!("{:?}", method)).text_color(match method {
                             model::HttpMethod::GET => colors.green,
                             model::HttpMethod::POST => colors.yellow,
                             _ => colors.text,
-                        }).w_12())
+                        }).text_size(rems(0.75)).font_weight(gpui::FontWeight::BOLD))
                 )
                 .child(Label::new(item.request.url.as_str()).text_color(colors.text).ml_2().flex_1())
                 .child(
