@@ -499,7 +499,7 @@ impl ApiTab {
                 )
                 .child(v_flex().gap_2().children(self.params.iter().enumerate().map(|(i, row)| {
                     h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
-                    .child(Button::new(format!("rem-p-{}", i)).label("X").on_click(cx.listener(move |this, _, _, cx| { this.remove_param(i, cx); cx.notify(); })))
+                    .child(Button::new(format!("rem-p-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| { this.remove_param(i, cx); cx.notify(); })))
                 })))
                 .into_any_element()
             }
@@ -511,7 +511,7 @@ impl ApiTab {
                 )
                 .child(v_flex().gap_2().children(self.headers.iter().enumerate().map(|(i, row)| {
                     h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
-                    .child(Button::new(format!("rem-h-{}", i)).label("X").on_click(cx.listener(move |this, _, _, cx| { this.remove_header(i, cx); cx.notify(); })))
+                    .child(Button::new(format!("rem-h-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| { this.remove_header(i, cx); cx.notify(); })))
                 })))
                 .into_any_element()
             }
@@ -555,11 +555,11 @@ impl ApiTab {
                             "application/none" => v_flex().flex_1().items_center().justify_center().child(Label::new("No body").text_color(colors.subtext)).into_any_element(),
                             "multipart/form-data" => v_flex().flex_1().overflow_y_scrollbar().children(self.form_data.iter().enumerate().map(|(i, row)| {
                                 h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
-                                .child(Button::new(format!("rem-fd-{}", i)).label("X").on_click(cx.listener(move |this, _, _, cx| { this.remove_form_data(i, cx); cx.notify(); })))
+                                .child(Button::new(format!("rem-fd-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| { this.remove_form_data(i, cx); cx.notify(); })))
                             })).into_any_element(),
                             "application/x-www-form-urlencoded" => v_flex().flex_1().overflow_y_scrollbar().children(self.urlencoded.iter().enumerate().map(|(i, row)| {
                                 h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
-                                .child(Button::new(format!("rem-ue-{}", i)).label("X").on_click(cx.listener(move |this, _, _, cx| { this.remove_urlencoded(i, cx); cx.notify(); })))
+                                .child(Button::new(format!("rem-ue-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| { this.remove_urlencoded(i, cx); cx.notify(); })))
                             })).into_any_element(),
                             _ => div().flex_1().bg(colors.bg).border_1().border_color(colors.border).p_1().rounded_md().child(Input::new(&self.body_input).size_full()).into_any_element(),
                         }

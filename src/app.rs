@@ -297,9 +297,12 @@ impl Hiposter {
                 };
                 method_bg.a = 0.15;
 
-                h_flex().id(("history-item", i)).group("history-item").p_2().cursor_pointer().hover(|s| s.bg(colors.surface)).on_click(cx.listener(move |this, _, window, cx| {
-                    this.add_tab(request.clone(), window, cx);
-                }))
+                h_flex().id(("history-item", i)).group("history-item").p_2().cursor_pointer()
+                    .border_l_2().border_color(colors.sidebar)
+                    .hover(|s| s.bg(colors.surface).border_color(colors.blue))
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.add_tab(request.clone(), window, cx);
+                    }))
                 .child(
                     h_flex().items_center().justify_center().w_16().px_1p5().py_0p5().rounded_md().bg(method_bg)
                         .child(Label::new(format!("{:?}", method)).text_color(match method {
@@ -331,7 +334,7 @@ impl Hiposter {
                         if tab_title.len() > 30 { format!("...{}", &tab_title[tab_title.len()-27..]) } else { tab_title }
                     };
                     
-                    h_flex().id(("tab", i)).flex_1().min_w(px(60.)).max_w(px(180.)).h_full().px_3().border_r_1().border_color(colors.border).cursor_pointer().bg(if is_active { colors.surface } else { colors.sidebar }).on_click(cx.listener(move |this, _, _, cx| {
+                    h_flex().id(("tab", i)).group("tab").flex_1().min_w(px(60.)).max_w(px(180.)).h_full().px_3().border_r_1().border_color(colors.border).cursor_pointer().bg(if is_active { colors.bg } else { colors.sidebar }).on_click(cx.listener(move |this, _, _, cx| {
                         this.active_tab_index = i;
                         cx.notify();
                     }))
@@ -341,7 +344,7 @@ impl Hiposter {
                             .child(Label::new(tab_title).text_color(if is_active { colors.blue } else { colors.subtext }))
                     )
                     .child(
-                        div().ml_1()
+                        div().ml_1().invisible().group_hover("tab", |s| s.visible())
                             .child(Button::new(format!("close-tab-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| {
                                 this.close_tab(i, cx);
                             })))
