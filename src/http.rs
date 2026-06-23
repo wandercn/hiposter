@@ -69,7 +69,34 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
                 let mut multipart = reqwest::multipart::Form::new();
                 for item in form {
                     if !item.key.is_empty() {
-                        multipart = multipart.text(item.key.clone(), item.value.clone());
+                        match item.item_type {
+                            crate::model::FormDataType::Text => {
+                                multipart = multipart.text(item.key.clone(), item.value.clone());
+                            }
+                            crate::model::FormDataType::File => {
+                                if !item.value.is_empty() {
+                                    let path = std::path::Path::new(&item.value);
+                                    if path.exists() {
+                                        let file_name = path.file_name()
+                                            .and_then(|n| n.to_str())
+                                            .unwrap_or("file")
+                                            .to_string();
+                                        match tokio::fs::read(path).await {
+                                            Ok(bytes) => {
+                                                let part = reqwest::multipart::Part::bytes(bytes)
+                                                    .file_name(file_name);
+                                                multipart = multipart.part(item.key.clone(), part);
+                                            }
+                                            Err(e) => {
+                                                return Err(anyhow::anyhow!("Failed to read file '{}': {}", item.value, e));
+                                            }
+                                        }
+                                    } else {
+                                        return Err(anyhow::anyhow!("File does not exist: {}", item.value));
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 builder = builder.multipart(multipart);

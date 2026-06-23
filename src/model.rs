@@ -49,11 +49,30 @@ impl Default for AuthData {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum FormDataType {
+    Text,
+    File,
+}
+
+impl Default for FormDataType {
+    fn default() -> Self {
+        Self::Text
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FormDataItem {
+    pub key: String,
+    pub value: String,
+    pub item_type: FormDataType,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum HttpBody {
     None,
     Raw(String),
-    FormData(Vec<Header>),
+    FormData(Vec<FormDataItem>),
     UrlEncoded(Vec<Header>),
 }
 

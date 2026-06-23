@@ -41,6 +41,12 @@ pub struct KeyValueRow {
     pub value: Entity<InputState>,
 }
 
+pub struct FormDataRow {
+    pub key: Entity<InputState>,
+    pub value: Entity<InputState>,
+    pub item_type: model::FormDataType,
+}
+
 pub struct ApiTab {
     pub url_input: Entity<InputState>,
     pub body_input: Entity<InputState>,
@@ -50,7 +56,7 @@ pub struct ApiTab {
     pub response_body_input: Entity<InputState>,
     pub params: Vec<KeyValueRow>,
     pub headers: Vec<KeyValueRow>,
-    pub form_data: Vec<KeyValueRow>,
+    pub form_data: Vec<FormDataRow>,
     pub urlencoded: Vec<KeyValueRow>,
     pub request: model::HttpRequest,
     pub response: Option<model::HttpResponse>,
@@ -119,7 +125,7 @@ impl ApiTab {
                 for item in form {
                     let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key").default_value(item.key.clone()));
                     let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value").default_value(item.value.clone()));
-                    form_data.push(KeyValueRow { key, value });
+                    form_data.push(FormDataRow { key, value, item_type: item.item_type });
                 }
             }
             model::HttpBody::UrlEncoded(form) => {
@@ -225,12 +231,32 @@ impl ApiTab {
     fn add_form_data(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let key = cx.new(|cx| InputState::new(window, cx).placeholder("Key"));
         let value = cx.new(|cx| InputState::new(window, cx).placeholder("Value"));
-        self.form_data.push(KeyValueRow { key, value });
+        self.form_data.push(FormDataRow { key, value, item_type: model::FormDataType::Text });
         cx.notify();
     }
 
     fn remove_form_data(&mut self, index: usize, _cx: &mut Context<Self>) {
         self.form_data.remove(index);
+    }
+
+    fn select_file(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let output = std::process::Command::new("osascript")
+            .arg("-e")
+            .arg("POSIX path of (choose file)")
+            .output();
+        if let Ok(out) = output {
+            if out.status.success() {
+                let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                if !path.is_empty() {
+                    if let Some(row) = self.form_data.get_mut(index) {
+                        row.value.update(cx, |input, cx| {
+                            input.set_value(path, window, cx);
+                        });
+                        cx.notify();
+                    }
+                }
+            }
+        }
     }
 
     fn add_urlencoded(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -253,7 +279,7 @@ impl ApiTab {
                 let items = self.form_data.iter().filter_map(|row| {
                     let key = row.key.read(cx).value().to_string();
                     let value = row.value.read(cx).value().to_string();
-                    (!key.is_empty()).then_some(model::Header { key, value })
+                    (!key.is_empty()).then_some(model::FormDataItem { key, value, item_type: row.item_type })
                 }).collect();
                 self.request.body = model::HttpBody::FormData(items);
             }
@@ -565,8 +591,44 @@ impl ApiTab {
                         match self.request.content_type.as_str() {
                             "application/none" => v_flex().flex_1().items_center().justify_center().child(Label::new("No body").text_color(colors.subtext)).into_any_element(),
                             "multipart/form-data" => v_flex().flex_1().overflow_y_scrollbar().children(self.form_data.iter().enumerate().map(|(i, row)| {
-                                h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
-                                .child(Button::new(format!("rem-fd-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| { this.remove_form_data(i, cx); cx.notify(); })))
+                                let is_file = row.item_type == model::FormDataType::File;
+                                h_flex().gap_2().items_center()
+                                    .child(
+                                        Button::new(format!("type-fd-{}", i))
+                                            .label(if is_file { "File" } else { "Text" })
+                                            .ghost()
+                                            .small()
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                if let Some(row) = this.form_data.get_mut(i) {
+                                                    row.item_type = if is_file {
+                                                        model::FormDataType::Text
+                                                    } else {
+                                                        model::FormDataType::File
+                                                    };
+                                                    cx.notify();
+                                                }
+                                            }))
+                                    )
+                                    .child(Input::new(&row.key).flex_1())
+                                    .child(
+                                        if is_file {
+                                            h_flex().flex_1().gap_1().items_center()
+                                                .child(Input::new(&row.value).flex_1())
+                                                .child(
+                                                    Button::new(format!("select-file-{}", i))
+                                                        .label("Choose...")
+                                                        .ghost()
+                                                        .small()
+                                                        .on_click(cx.listener(move |this, _, window, cx| {
+                                                            this.select_file(i, window, cx);
+                                                        }))
+                                                )
+                                                .into_any_element()
+                                        } else {
+                                            Input::new(&row.value).flex_1().into_any_element()
+                                        }
+                                    )
+                                    .child(Button::new(format!("rem-fd-{}", i)).icon(IconName::Close).ghost().small().on_click(cx.listener(move |this, _, _, cx| { this.remove_form_data(i, cx); cx.notify(); })))
                             })).into_any_element(),
                             "application/x-www-form-urlencoded" => v_flex().flex_1().overflow_y_scrollbar().children(self.urlencoded.iter().enumerate().map(|(i, row)| {
                                 h_flex().gap_2().child(Input::new(&row.key).flex_1()).child(Input::new(&row.value).flex_1())
