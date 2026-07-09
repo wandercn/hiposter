@@ -5,6 +5,10 @@
 # If running on macOS to build for Linux, it expects cross-compilation tools (like cargo-zigbuild).
 set -e
 
+# Change directory to the project root (parent of scripts/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
 APP_NAME="hiposter"
 DISPLAY_NAME="HiPoster"
 VERSION=$(grep '^version =' Cargo.toml | cut -d '"' -f 2)

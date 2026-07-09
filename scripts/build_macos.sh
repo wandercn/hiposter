@@ -3,6 +3,10 @@
 # Build for macOS (Universal Binary with Ad-hoc Signing)
 set -e
 
+# Change directory to the project root (parent of scripts/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
 APP_NAME="HiPoster"
 BINARY_NAME="hiposter-gpui"
 BUNDLE_ID="com.obity.hiposter"

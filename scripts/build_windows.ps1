@@ -8,6 +8,10 @@
 
 $ErrorActionPreference = "Stop"
 
+# Change directory to the project root (parent of scripts/)
+$ScriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
+Set-Location -Path "$ScriptDir\.."
+
 $AppName = "HiPoster"
 $Version = (Select-String -Path "Cargo.toml" -Pattern '^version = "(.*)"').Matches.Groups[1].Value
 $BinaryName = "hiposter-gpui.exe"
