@@ -16,6 +16,7 @@ HiPoster is a high-performance, modern API testing tool built with Rust and the 
 - **🎨 Beautiful Themes**: Comes with multiple built-in color schemes including GitHub Light, Solarized Light, One Light, Vitesse Light, and Catppuccin Latte.
 - **🔄 Complete HTTP Support**: Full support for query parameters, custom headers, and multiple body types (`application/json`, `multipart/form-data`, `application/x-www-form-urlencoded`, `text/plain`, etc.).
 - **🔒 Authentication**: Built-in support for Bearer Token and Basic Auth.
+- **🐚 cURL Command Preview & Copy**: Generate shell-escaped `curl` commands for GET, POST, or other requests (including URL query params, body content, custom headers, and bearer token/basic auth info). View them in a scrollable modal overlay before copying to clipboard for quick server-side debugging.
 - **📚 History Tracking**: Automatically saves your request history for quick access and re-execution.
 - **✨ Syntax Highlighting**: Auto-formats and syntax-highlights JSON requests and responses.
 
@@ -36,7 +37,7 @@ To build a Universal Binary (supports both Intel and Apple Silicon Macs) package
 ./scripts/build_macos.sh
 ```
 
-The resulting `HiPoster.dmg` will be available in the `target/release/` directory.
+The resulting DMG package (e.g., `hiposter_v0.1.5.dmg`) will be available in the `target/release/` directory.
 
 ### Building for Linux
 
@@ -45,6 +46,8 @@ A script is provided to compile and package the app for Linux (Debian/Ubuntu):
 ```bash
 ./scripts/build_linux.sh
 ```
+
+The resulting Debian package (e.g., `hiposter_v0.1.5_amd64.deb`) will be available in the `target/release/` directory.
 
 ### Building for Windows
 
@@ -59,6 +62,8 @@ To build the application, you must use a native Windows environment (or a Window
 ```powershell
 .\scripts\build_windows.ps1
 ```
+
+The resulting Windows executable (e.g., `hiposter_v0.1.5_amd64.exe`) will be available in the `target\windows_release\` directory.
 
 ## 📖 Development Guide
 
@@ -92,7 +97,7 @@ The book is built using [mdBook](https://github.com/rust-lang/mdBook).
 
 ## About
 
-- **Version**: 0.1.0
+- **Version**: 0.1.5
 - **Author**: wander
 - **Source Code**: [https://github.com/wandercn/hiposter](https://github.com/wandercn/hiposter)
 
