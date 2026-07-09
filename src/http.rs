@@ -158,3 +158,150 @@ pub async fn execute_request(request: &HttpRequest) -> Result<HttpResponse> {
         elapsed_ms,
     })
 }
+
+pub fn request_to_curl(request: &HttpRequest) -> String {
+    let mut parts = vec!["curl".to_string()];
+
+    // Method
+    let method = match request.method {
+        HttpMethod::GET => "GET",
+        HttpMethod::POST => "POST",
+        HttpMethod::PUT => "PUT",
+        HttpMethod::DELETE => "DELETE",
+        HttpMethod::PATCH => "PATCH",
+        HttpMethod::HEAD => "HEAD",
+        HttpMethod::OPTIONS => "OPTIONS",
+    };
+    parts.push(format!("-X {}", method));
+
+    // Default Headers (same as execute_request)
+    parts.push("-H 'User-Agent: hiposter-gpui/0.1.0'".to_string());
+    parts.push("-H 'Accept: */*'".to_string());
+    parts.push("-H 'Connection: keep-alive'".to_string());
+
+    // Custom Headers
+    for header in &request.headers {
+        if !header.key.trim().is_empty() {
+            parts.push(format!("-H {}", escape_shell(&format!("{}: {}", header.key.trim(), header.value))));
+        }
+    }
+
+    // Auth
+    match &request.auth.auth_type {
+        AuthType::Bearer => {
+            if !request.auth.token.is_empty() {
+                parts.push(format!("-H {}", escape_shell(&format!("Authorization: Bearer {}", request.auth.token))));
+            }
+        }
+        AuthType::Basic => {
+            let encoded = base64_encode(format!("{}:{}", request.auth.username, request.auth.password).as_bytes());
+            parts.push(format!("-H {}", escape_shell(&format!("Authorization: Basic {}", encoded))));
+        }
+        AuthType::None => {}
+    }
+
+    // Content Type & Body
+    use crate::model::HttpBody;
+    if !matches!(request.method, HttpMethod::GET | HttpMethod::HEAD) {
+        match &request.body {
+            HttpBody::Raw(raw) if !raw.is_empty() => {
+                parts.push(format!("-H {}", escape_shell(&format!("Content-Type: {}", request.content_type))));
+                parts.push(format!("--data-raw {}", escape_shell(raw)));
+            }
+            HttpBody::FormData(form) => {
+                for item in form {
+                    if !item.key.is_empty() {
+                        match item.item_type {
+                            crate::model::FormDataType::Text => {
+                                parts.push(format!("-F {}", escape_shell(&format!("{}={}", item.key, item.value))));
+                            }
+                            crate::model::FormDataType::File => {
+                                if !item.value.is_empty() {
+                                    parts.push(format!("-F {}", escape_shell(&format!("{}=@{}", item.key, item.value))));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            HttpBody::UrlEncoded(form) => {
+                let mut urlencoded_parts = Vec::new();
+                for item in form {
+                    if !item.key.is_empty() {
+                        let key_enc = url_encode(&item.key);
+                        let val_enc = url_encode(&item.value);
+                        urlencoded_parts.push(format!("{}={}", key_enc, val_enc));
+                    }
+                }
+                if !urlencoded_parts.is_empty() {
+                    let body_str = urlencoded_parts.join("&");
+                    parts.push(format!("-H 'Content-Type: application/x-www-form-urlencoded'"));
+                    parts.push(format!("-d {}", escape_shell(&body_str)));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    // URL (should be at the end, escaped)
+    parts.push(escape_shell(&request.url));
+
+    parts.join(" ")
+}
+
+fn escape_shell(s: &str) -> String {
+    let mut escaped = String::new();
+    escaped.push('\'');
+    for c in s.chars() {
+        if c == '\'' {
+            escaped.push_str("'\\''");
+        } else {
+            escaped.push(c);
+        }
+    }
+    escaped.push('\'');
+    escaped
+}
+
+fn base64_encode(input: &[u8]) -> String {
+    const CHARSET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut result = String::new();
+    let mut buf = 0u32;
+    let mut bits = 0;
+    for &b in input {
+        buf = (buf << 8) | b as u32;
+        bits += 8;
+        while bits >= 6 {
+            bits -= 6;
+            let idx = (buf >> bits) & 0x3F;
+            result.push(CHARSET[idx as usize] as char);
+        }
+    }
+    if bits > 0 {
+        buf <<= 6 - bits;
+        let idx = buf & 0x3F;
+        result.push(CHARSET[idx as usize] as char);
+    }
+    while result.len() % 4 != 0 {
+        result.push('=');
+    }
+    result
+}
+
+fn url_encode(s: &str) -> String {
+    let mut encoded = String::new();
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                encoded.push(b as char);
+            }
+            b' ' => {
+                encoded.push('+');
+            }
+            _ => {
+                encoded.push_str(&format!("%{:02X}", b));
+            }
+        }
+    }
+    encoded
+}

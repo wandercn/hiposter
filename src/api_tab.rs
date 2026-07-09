@@ -68,6 +68,8 @@ pub struct ApiTab {
     pub theme: AppTheme,
     pub url_dirty: bool,
     pub params_dirty: bool,
+    pub copy_curl_status: Option<String>,
+    pub show_curl_modal: Option<String>,
 }
 
 impl EventEmitter<model::HttpRequest> for ApiTab {}
@@ -191,6 +193,8 @@ impl ApiTab {
             theme,
             url_dirty: false,
             params_dirty: true,
+            copy_curl_status: None,
+            show_curl_modal: None,
         }
     }
 
@@ -564,7 +568,8 @@ impl ApiTab {
                     .child(div().w_px().h_5().bg(colors.border).mx_1())
                     .child(Input::new(&self.url_input).flex_1().bordered(false).focus_bordered(false))
             )
-            .child(
+            .child({
+                let view = view.clone();
                 Button::new("send")
                     .primary()
                     .icon(IconName::ArrowRight)
@@ -580,7 +585,21 @@ impl ApiTab {
                             cx.emit(request); 
                         }).ok();
                     })
-            )
+            })
+            .child({
+                let view = view.clone();
+                Button::new("copy-curl")
+                    .ghost()
+                    .label("cURL")
+                    .on_click(move |_, _, cx| {
+                        view.update(cx, |this, cx| {
+                            this.update_request_state(cx);
+                            let curl_cmd = crate::http::request_to_curl(&this.request);
+                            this.show_curl_modal = Some(curl_cmd);
+                            cx.notify();
+                        }).ok();
+                    })
+            })
     }
 
     fn render_request_panel(&self, colors: &ThemeColors, _view: WeakEntity<Self>, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -853,13 +872,114 @@ impl Render for ApiTab {
             self.update_response_display(window, cx);
         }
         
-        v_flex().flex_1().size_full().bg(colors.bg)
-            .child(self.render_url_bar(&colors, view.clone(), window, cx))
-            .child(div().flex_1().size_full().child(
-                v_resizable("main-split")
-                    .child(resizable_panel().size(px(450.)).min_size(px(100.)).child(self.render_request_panel(&colors, view.clone(), window, cx)))
-                    .child(resizable_panel().flex_1().min_size(px(150.)).child(self.render_response_panel(&colors, view.clone(), window, cx)))
-            ))
+        div().relative().size_full().bg(colors.bg)
+            .child(
+                v_flex().flex_1().size_full()
+                    .child(self.render_url_bar(&colors, view.clone(), window, cx))
+                    .child(div().flex_1().size_full().child(
+                        v_resizable("main-split")
+                            .child(resizable_panel().size(px(450.)).min_size(px(100.)).child(self.render_request_panel(&colors, view.clone(), window, cx)))
+                            .child(resizable_panel().flex_1().min_size(px(150.)).child(self.render_response_panel(&colors, view.clone(), window, cx)))
+                    ))
+            )
+            .when_some(self.show_curl_modal.clone(), |this, curl_cmd| {
+                let view_clone = view.clone();
+                let curl_cmd_clone = curl_cmd.clone();
+                let copy_label = self.copy_curl_status.as_deref().unwrap_or("Copy");
+                
+                let mut overlay_bg = colors.text;
+                overlay_bg.a = 0.4;
+                
+                this.child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .size_full()
+                        .bg(overlay_bg)
+                        .items_center()
+                        .justify_center()
+                        .child(
+                            v_flex()
+                                .w(px(600.))
+                                .bg(colors.bg)
+                                .rounded_md()
+                                .border_1()
+                                .border_color(colors.border)
+                                .p_5()
+                                .gap_4()
+                                .child(
+                                    h_flex()
+                                        .justify_between()
+                                        .items_center()
+                                        .child(Label::new("Generated cURL Command").font_weight(gpui::FontWeight::BOLD).text_color(colors.text))
+                                        .child(
+                                            Button::new("close-modal")
+                                                .icon(IconName::Close)
+                                                .ghost()
+                                                .small()
+                                                .on_click({
+                                                    let view_close = view_clone.clone();
+                                                    move |_, _, cx| {
+                                                        view_close.update(cx, |this, cx| {
+                                                            this.show_curl_modal = None;
+                                                            cx.notify();
+                                                        }).ok();
+                                                    }
+                                                })
+                                        )
+                                )
+                                .child(
+                                    div()
+                                        .w_full()
+                                        .max_h(px(250.))
+                                        .overflow_y_scrollbar()
+                                        .bg(colors.sidebar)
+                                        .rounded_md()
+                                        .border_1()
+                                        .border_color(colors.border)
+                                        .p_3()
+                                        .child(
+                                            Label::new(curl_cmd.clone())
+                                                .text_color(colors.text)
+                                                .text_size(rems(0.85))
+                                        )
+                                )
+                                .child(
+                                    h_flex()
+                                        .justify_end()
+                                        .gap_2()
+                                        .child(
+                                            Button::new("modal-copy")
+                                                .primary()
+                                                .label(copy_label)
+                                                .on_click({
+                                                    let view_copy = view_clone.clone();
+                                                    let curl_cmd_copy = curl_cmd_clone.clone();
+                                                    move |_, _, cx| {
+                                                        view_copy.update(cx, |this, cx| {
+                                                            cx.write_to_clipboard(ClipboardItem::new_string(curl_cmd_copy.clone()));
+                                                            this.copy_curl_status = Some("Copied!".to_string());
+                                                            cx.notify();
+                                                            
+                                                            cx.spawn(|this: WeakEntity<Self>, cx: &mut AsyncApp| {
+                                                                let mut cx = cx.clone();
+                                                                async move {
+                                                                    cx.background_executor().timer(std::time::Duration::from_millis(1500)).await;
+                                                                    let _ = this.update(&mut cx, |this, cx| {
+                                                                        this.copy_curl_status = None;
+                                                                        cx.notify();
+                                                                    });
+                                                                }
+                                                            }).detach();
+                                                        }).ok();
+                                                    }
+                                                })
+                                        )
+                                )
+                        )
+                )
+            })
     }
 }
 
