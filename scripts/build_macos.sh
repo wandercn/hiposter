@@ -47,7 +47,7 @@ lipo -info "$APP_DIR/Contents/MacOS/$BINARY_NAME"
 
 # Package into .dmg
 TEMP_DIR="target/release/dmg_temp"
-DMG_NAME="target/release/$APP_NAME.dmg"
+DMG_NAME="target/release/hiposter_v${VERSION}.dmg"
 
 echo "Packaging Universal App into .dmg..."
 rm -rf "$TEMP_DIR"

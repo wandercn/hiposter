@@ -45,9 +45,10 @@ New-Item -Path $BuildDir -ItemType Directory | Out-Null
 
 # 4. Copy the compiled executable to the output directory
 $SourceExe = "target\release\$BinaryName"
+$DestName = "hiposter_v$($Version)_amd64.exe"
 if (Test-Path -Path $SourceExe) {
-    Copy-Item -Path $SourceExe -Destination $BuildDir\
-    Write-Host "Successfully built Windows binary at $BuildDir\$BinaryName" -ForegroundColor Green
+    Copy-Item -Path $SourceExe -Destination "$BuildDir\$DestName"
+    Write-Host "Successfully built Windows binary at $BuildDir\$DestName" -ForegroundColor Green
 } else {
     Write-Error "Failed to find the compiled executable at $SourceExe"
 }

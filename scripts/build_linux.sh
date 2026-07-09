@@ -98,7 +98,7 @@ chmod 0644 "$BUILD_DIR/DEBIAN/control"
 chmod 0755 "$BUILD_DIR/usr/bin/$APP_NAME"
 chmod -R 0755 "$BUILD_DIR/usr"
 
-DEB_FILE="target/release/${APP_NAME}_${VERSION}_${TARGET_ARCH}.deb"
+DEB_FILE="target/release/${APP_NAME}_v${VERSION}_${TARGET_ARCH}.deb"
 
 # Only attempt dpkg-deb if the tool exists (usually on Linux or if installed on Mac via Homebrew)
 if command -v dpkg-deb &> /dev/null; then
