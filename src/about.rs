@@ -23,11 +23,27 @@ impl Render for AboutWindow {
         let subtext_color = theme.colors.muted_foreground;
 
         v_flex()
+            .relative()
             .size_full()
             .bg(bg_color)
             .items_center()
             .justify_center()
             .gap_4()
+            .child(
+                div()
+                    .absolute()
+                    .top_2()
+                    .right_2()
+                    .child(
+                        Button::new("close-about")
+                            .icon(gpui_component::IconName::Close)
+                            .ghost()
+                            .small()
+                            .on_click(move |_, window, _| {
+                                window.remove_window();
+                            })
+                    )
+            )
             .child(
                 gpui::img("icons/logo.png")
                     .w_20()
